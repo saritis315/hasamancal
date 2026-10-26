@@ -1,4 +1,4 @@
-# הסמנכ״ל — בחירת Technology Stack
+# הסמנכל — בחירת Technology Stack
 
 גרסה 2.0 (טיוטה לאישור) | 26.10.2026
 
@@ -12,7 +12,7 @@
 
 - סטאק הקורס מכסה את כל דרישות ה-Must וה-Should ב-PRD, במלואן או בחלקן. **אף דרישת Must לא נתקעת על הסטאק**, ולכן אין צורך בחריגה ממנו, מלבד הטבלה הרביעית שאושרה.
 - לא הוחלף אף רכיב של סטאק הקורס.
-- ארבע תוספות קטנות בלבד: **מודל AI מוגדר** (`gemini-3.8-flash`), **הגדרת אירוח ל-n8n** (n8n Cloud), **גופן עברי** (Heebo), ו**ספרייה לקריאת קבצים** (SheetJS, חדש).
+- ארבע תוספות קטנות בלבד: **מודל AI מוגדר** (`gemini-3.8-flash`), **הגדרת אירוח ל-n8n** (n8n Cloud), **גופן עברי** (Heebo, ולשם בלוגו בלבד M PLUS Rounded 1c), ו**ספרייה לקריאת קבצים** (SheetJS, חדש).
 - שירותי הודעות, תשלומים, מפות ואחסון קבצים: **המוצר לא צריך** אף אחד מהם לפי ה-PRD. קובץ הנתונים נקרא ומסוכם, ולא נשמר.
 - הסיכון הטכנולוגי של Arbox API **הוצא מגרסת הקורס** והועבר לפיצ'ר F24 (חזון).
 
@@ -168,7 +168,7 @@
 | אוטומציות | n8n | לפי סטאק הקורס | course-stack.md |
 | **תוספת 1: דגם AI** | `gemini-3.8-flash`. בקורס בשכבה החינמית עם נתוני דמה; לנתונים אמיתיים במפתח בתשלום (Tier 1). אפשרות להשוות ל-`gemini-3.5-flash-lite` באותם קלטי דמה | נשאר במשפחת ברירת המחדל של הסטאק; דגם יציב; פלט במבנה קבוע נתמך; בתשלום התוכן לא משמש לשיפור מוצרי Google | [מחירים](https://ai.google.dev/gemini-api/docs/pricing), [פלט מובנה](https://ai.google.dev/gemini-api/docs/structured-output), [דגמים](https://ai.google.dev/gemini-api/docs/models) |
 | **תוספת 2: אירוח n8n** | n8n Cloud: תקופת ניסיון בקורס, ו-Starter לשימוש אמיתי | נמנע מהוספת שרת שהסטאק לא כולל | [n8n.io/pricing](https://n8n.io/pricing/) |
-| **תוספת 3: גופן עברי** | Heebo (Google Fonts) | גופן עברי אמיתי לפי דרישת הסטאק; העברית מתועדת בדף הגופן | [Heebo](https://fonts.google.com/specimen/Heebo) |
+| **תוספת 3: גופן עברי** | Heebo (Google Fonts) לממשק, ו-M PLUS Rounded 1c Black (Google Fonts, נטען עם הפרמטר text) לשם בלוגו בלבד | גופן עברי אמיתי לפי דרישת הסטאק; העברית מתועדת בדף הגופן | [Heebo](https://fonts.google.com/specimen/Heebo) |
 | **תוספת 4: קריאת קבצים (חדש)** | SheetJS Community Edition (Apache 2.0), קובץ `xlsx.full.min.js` שמור בריפו | ספרייה אחת מכסה Excel ו-CSV, ללא שלב בנייה; ההמלצה הרשמית היא לשמור את הקובץ בפרויקט | [cdn.sheetjs.com](https://cdn.sheetjs.com/), [רישיון](https://docs.sheetjs.com/docs/miscellany/license) |
 
 ### מה לא נוסף

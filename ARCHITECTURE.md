@@ -1,4 +1,4 @@
-# הסמנכ״ל — ארכיטקטורה
+# הסמנכל — ארכיטקטורה
 
 גרסה 2.0 (טיוטה לאישור) | 26.10.2026
 
@@ -66,7 +66,7 @@
 | `js/filecontract.js` | הפקת תבנית, קריאת הקובץ ואימות מבנה מול ההגדרה (סעיף 7). |
 | `js/engine.js` | חישוב השוואה לתקופה קודמת, שינוי וחריגה. פונקציות טהורות, בלי גישה לרשת. |
 | `vendor/xlsx.full.min.js` | SheetJS Community Edition (נשמר בריפו, לפי `tech-stack.md`). |
-| גופן | Heebo מ-Google Fonts. |
+| גופן | Heebo מ-Google Fonts. הלוגו משתמש גם ב-M PLUS Rounded 1c (משקל 900), שנטען עם הפרמטר text כך שנטענות רק אותיות השם. |
 | ספריות | `@supabase/supabase-js@2` בתג script מ-CDN (`https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2`), לפי תיעוד Supabase. |
 
 **כללי ממשק (מה-PRD ומסטאק הקורס):**
