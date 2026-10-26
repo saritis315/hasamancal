@@ -7,8 +7,8 @@
 ## קבצים
 - הקבצים בתיקייה אחת, בשמות קבועים, בלי תיקיות משנה:
   - `course-stack.md`, `PRD.md`, `tech-stack.md`, `ARCHITECTURE.md`, `DESIGN.md`, `MILESTONES.md`
-  - תמונות: `wireframes.png`, `style-guide.png`, `mockups.png`, `inspiration-board.png`
-- `inspiration-board.png` עדיין לא קיים ויווצר בהמשך.
+  - תמונות: `wireframes.png`, `style-guide.png`, `mockups.png`
+  - ללא `inspiration-board.png`: בוטל בהחלטת בעלת המוצר.
 - אל תמחק ואל תדרוס קובץ בלי לשאול.
 
 ## אופן עבודה
