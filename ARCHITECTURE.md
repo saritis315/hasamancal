@@ -1,47 +1,50 @@
 # הסמנכ״ל — ארכיטקטורה
 
-גרסה 1.0 (טיוטה לאישור) | מבוסס על: PRD.md, tech-stack.md (מאושר), course-stack.md, מסמך עשרת ההיבטים.
+גרסה 2.0 (טיוטה לאישור) | 26.10.2026
 
-המסמך מתרגם את דרישות ה-PRD לתכנון טכני פשוט. הוא משתמש רק בטכנולוגיות שבקובץ tech-stack.md, ובכל מקום שמידע טכני חסר מופיעה החלטה סבירה עם משפט הסבר (מסומנת **החלטה**). הוא אינו כולל Milestones, משימות או לוחות זמנים.
+מבוסס על: `PRD.md` גרסה 2.0, `MVP.md` גרסה 2.1, `tech-stack.md` גרסה 2.0 (מאושר), `course-stack.md`, `product-10-definitions.md` גרסה 2.0.
+
+המסמך מתרגם את דרישות ה-PRD לתכנון טכני פשוט. הוא משתמש רק בטכנולוגיות שב-`tech-stack.md`, ובכל מקום שמידע טכני חסר מופיעה בחירה סבירה עם משפט הסבר (מסומנת **החלטה**). הוא אינו כולל Milestones, משימות או לוחות זמנים.
+
+**מה השתנה מגרסה 1.0:** אין עוד צינור n8n שמושך מ-Arbox. הנתונים מגיעים מקובץ שנקרא בדפדפן, והחישוב נעשה בקוד בדפדפן. תהליך n8n אחד נשאר (בדיקת תוצאה). פונקציה אחת בצד השרת מטפלת בכל קריאות ה-AI. ההגדרה של העסק נשמרת בטבלה רביעית.
 
 ---
 
 ## 1. מבט על
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│ צד לקוח (GitHub Pages): HTML, CSS, JavaScript               │
-│ התחברות, מסכים, שמירת החלטות                                │
-└───────────┬─────────────────────────────┬───────────────────┘
-            │ supabase-js                  │ POST /api/explain
-            │ (מפתח ציבורי + סשן משתמש)    │ (רק "הסבר לי")
-            ▼                              ▼
+┌──────────────────────────────────────────────────────────────┐
+│ צד לקוח (GitHub Pages): HTML, CSS, JavaScript                │
+│ התחברות, הקמה, קריאת קובץ, חישוב KPI וחריגות, מסכים          │
+└───────┬──────────────────────────────┬───────────────────────┘
+        │ supabase-js                   │ POST /api/ai
+        │ (מפתח ציבורי + סשן משתמש)     │ (הקמה, תובנה, "הסבר לי")
+        ▼                               ▼
 ┌──────────────────────────┐   ┌───────────────────────────────┐
 │ נתונים: Supabase         │   │ לוגיקה: פונקציה ב-Vercel      │
-│ Auth + 3 טבלאות + RLS    │◄──│ api/explain.js → Gemini       │
+│ Auth + 4 טבלאות + RLS    │◄──│ api/ai.js → Gemini            │
 └───────────▲──────────────┘   └───────────────────────────────┘
             │ מפתח service_role (רק ב-n8n)
 ┌───────────┴──────────────────────────────────────────────────┐
-│ לוגיקה: n8n Cloud                                           │
-│ W1 צינור יומי (משיכה, חישוב, חריגה, תובנה) + טעינת היסטוריה │
-│ W2 בדיקת תוצאה יומית                                         │
-│ קורא ל-Arbox API ול-Gemini                                  │
+│ לוגיקה: n8n Cloud                                            │
+│ W2 בדיקת תוצאה יומית (הנתון היחיד שנכתב ע"י n8n)             │
 └──────────────────────────────────────────────────────────────┘
 ```
 
-**עיקרון מנחה:** הדפדפן קורא וכותב ל-Supabase רק במה שהרשאות הטבלה מתירות. כל מה שכותב מדדים ותובנות הוא n8n. כל קריאה למודל מהדפדפן עוברת דרך פונקציה אחת.
+**עיקרון מנחה:** הדפדפן קורא וכותב ל-Supabase רק במה שהרשאות הטבלה מתירות. כל קריאה למודל עוברת דרך פונקציה אחת. כל חישוב נעשה בקוד, לא במודל. בדיקת התוצאה, היחידה שדורשת תזמון, רצה ב-n8n.
 
 ---
 
 ## 2. סתירות בין המקורות והחלטות שהתקבלו
 
-| # | הסתירה | ההחלטה |
+| # | הסתירה או השאלה | ההחלטה |
 |---|---|---|
-| 1 | עשרת ההיבטים מתכננים סביב תשע ישויות. הסטאק מגביל לשלוש טבלאות. | Business, Data Source, Metric Definition: קובצי JSON בריפו (סעיף 4.4). Metric Value: טבלה `metric_values`. Insight: טבלה `insights`. Decision, Outcome ו-Management Case: טבלה `decisions` (Outcome כעמודת JSON, Management Case כערך `kind`). Action אינה ממומשת, כי אף דרישה ב-PRD לא צריכה אותה. |
-| 2 | חישובי KPI צריכים להיות בקוד, אבל הסטאק מורה להתחיל מפונקציה אחת בלבד ולהוסיף רק כשדרישת Must מחייבת. | החישובים רצים בצמתי Code של n8n. הפונקציה היחידה היא `api/explain.js` (F11). תהליכי n8n מיוצאים כקבצי JSON לתיקיית `n8n/` בריפו לצורך גרסאות. |
-| 3 | Arbox API טרם אומת (שדות, היסטוריה, סיווג מוצר), והקורס עובד על נתוני דמה. | מתג `data_source.mode` בקובץ הגדרות: `demo` או `live`. רק צומת הנרמול של Arbox מוחלף אחרי בדיקת ה-API. כל מה שאחריו זהה בשני המצבים. |
-| 4 | ה-PRD לא קובע מה "מפעיל" את החישוב האירועי. | האירוע הוא סיום משיכת הנתונים. כל השרשרת רצה בהרצה אחת של תהליך W1. |
-| 5 | תקופת הניסיון של n8n Cloud מוגבלת ל-180 שניות להרצה (לפי tech-stack.md). | התובנות נוצרות רק לשבוע המלא האחרון (סעיף 7.2), כך שמספר קריאות ה-AI בהרצה קטן. |
+| 1 | הסטאק מגביל לשלוש טבלאות, וההגדרה של העסק נוצרת בזמן ריצה. | טבלה רביעית `business_config`, באישור בעלת המוצר (PRD סעיף 5). חלופת גיבוי בסעיף 4.5. |
+| 2 | הסטאק מורה להתחיל בפונקציה אחת. ל-AI יש שלוש קריאות מהדפדפן: הקמה, תובנה, "הסבר לי". | פונקציה אחת, `api/ai.js`, עם שדה `action`. כך נשארים בפונקציה אחת. |
+| 3 | ה-PRD לא קובע מה "מפעיל" את החישוב האירועי. | האירוע הוא סיום העלאת קובץ תקין (או בחירת עסק דמה). החישוב רץ בדפדפן באותה פעולה. |
+| 4 | חישוב KPI צריך להיות בקוד. הקוד יכול לרוץ בדפדפן, בפונקציה או ב-n8n. | **החלטה:** בדפדפן, במודול `engine.js` של פונקציות טהורות. הקובץ ממילא נקרא בדפדפן, אין צורך להעביר אותו לשרת, והסטאק מדגיש פונקציה אחת בלבד. משתמש אחד, ולכן אין צורך להגן על החישוב מפני משתמש זדוני. |
+| 5 | ה-PRD אומר שסכום החתכים שווה לסכום הכולל, אבל יש KPI שאינם ניתנים לחיבור (אחוזי המרה, ממוצעים). | **החלטה:** לכל KPI יש סימון `additive`. בדיקת הסכום חלה רק על KPI שסומנו כניתנים לחיבור. צריך לעדכן את סעיף F8 ב-PRD (ראו סעיף 12). |
+| 6 | נושא "תפעול" יצא מגרסת הקורס, ו-3 הנושאים קבועים. | שלושת הנושאים קבועים בקוד (`leads`, `sales`, `finance`). ה-AI מציע KPI בתוכם, ולא מציע נושאים. |
 
 ---
 
@@ -49,81 +52,88 @@
 
 ### 3.1 צד לקוח
 
-אתר סטטי ב-GitHub Pages: HTML, CSS ו-JavaScript בלבד, בלי React ובלי שלב בנייה (לפי course-stack.md).
+אתר סטטי ב-GitHub Pages: HTML, CSS ו-JavaScript בלבד, בלי React ובלי שלב בנייה.
 
 | רכיב | תפקיד |
 |---|---|
 | `index.html` | טופס כניסה (אימייל וסיסמה). אין הרשמה, שחזור סיסמה או כניסה עם Google. |
-| `snapshot.html` | המסך העיקרי: תמונת מצב ניהולית (F16). |
-| `insights.html` | רשימת תובנות, פירוט תובנה, "הסבר לי" ושמירת החלטת KPI (F9, F11, F12, F17). |
-| `decisions.html` | רשימת החלטות ותוצאות, וטופס החלטת מנהל (F13, F14, F18). |
+| `setup.html` | הקמה והעלאה (F1, F2, F3, F4, F5): תיאור העסק, שאלות הבהרה, הצעה לאישור, הורדת תבנית, העלאת קובץ או בחירת עסק דמה. |
+| `snapshot.html` | המסך העיקרי: תמונת מצב ניהולית (F18). |
+| `insights.html` | רשימת תובנות, פירוט, "הסבר לי" ושמירת החלטת KPI (F11, F13, F14, F19). |
+| `decisions.html` | החלטות ותוצאות, וטופס החלטת מנהל (F15, F16, F20). |
 | `js/supabase.js` | יצירת לקוח Supabase, בדיקת סשן והפניה לכניסה אם אין סשן. |
-| ספריות | `@supabase/supabase-js@2` נטען בתג script מ-CDN (`https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2`), לפי תיעוד Supabase. |
+| `js/setup.js` | שיחת ההקמה, אישור ההצעה ושמירתה. |
+| `js/filecontract.js` | הפקת תבנית, קריאת הקובץ ואימות מבנה מול ההגדרה (סעיף 7). |
+| `js/engine.js` | חישוב השוואה לתקופה קודמת, שינוי וחריגה. פונקציות טהורות, בלי גישה לרשת. |
+| `vendor/xlsx.full.min.js` | SheetJS Community Edition (נשמר בריפו, לפי `tech-stack.md`). |
 | גופן | Heebo מ-Google Fonts. |
+| ספריות | `@supabase/supabase-js@2` בתג script מ-CDN (`https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2`), לפי תיעוד Supabase. |
 
 **כללי ממשק (מה-PRD ומסטאק הקורס):**
 
-- `<html lang="he" dir="rtl">`, מסך הניהול נבנה קודם למחשב ועובד גם בנייד, Responsive (F19).
+- `<html lang="he" dir="rtl">`, מסך הניהול נבנה קודם למחשב ועובד גם בנייד (F21).
 - מצב חריגה מוצג בצבע וגם במילה או באייקון.
 - ניווט מלא במקלדת, תווית לכל שדה, ניגודיות מספקת.
 - `localStorage` לא משמש כזיכרון המערכת.
 
-**מה הדפדפן עושה:**
+**מה הדפדפן עושה:** קורא מכל הטבלאות כמשתמש מחובר. קורא ומאמת קובץ. מחשב מדדים וחריגות. כותב ל-`business_config`, ל-`metric_values` ולשורות חדשות ב-`decisions`. קורא ל-`/api/ai`. טוען עסקי דמה מהריפו.
 
-- קורא מ-`metric_values`, `insights`, `decisions` דרך supabase-js, כמשתמש מחובר (RLS קובע מה מותר).
-- כותב רק שורות חדשות ל-`decisions`.
-- קורא לפונקציה `POST /api/explain` עם הסשן של המשתמש.
-- טוען את קובצי ההגדרות מ-`config/` (תוויות KPI ורשימת הפילוחים).
-
-**מה הדפדפן לא עושה:** לא קורא ל-Arbox, לא קורא למודל, לא מחשב KPI, לא כותב ל-`metric_values` או ל-`insights`, ולא מחזיק שום מפתח סודי.
+**מה הדפדפן לא עושה:** לא קורא למודל ישירות, לא מחזיק מפתח סודי, ולא מעדכן תוצאות החלטות (זה n8n).
 
 ### 3.2 לוגיקה
 
 | רכיב | תפקיד | סוג הפעלה |
 |---|---|---|
-| תהליך **W1** ב-n8n: צינור נתונים | משיכה, נרמול, חישוב KPI, זיהוי חריגה, יצירת תובנה | מתוזמן יומי + הפעלה ידנית לטעינת היסטוריה |
+| פונקציה `api/ai.js` ב-Vercel | שלוש פעולות AI: `setup`, `insight`, `explain` | לפי בקשה מהדפדפן |
 | תהליך **W2** ב-n8n: בדיקת תוצאה | בדיקת החלטות שהגיע תאריך הבדיקה שלהן | מתוזמן יומי |
-| פונקציה `api/explain.js` ב-Vercel | "הסבר לי": קריאה מאובטחת למודל | לפי בקשה מהדפדפן |
-
-**החלטה:** אין פונקציה נוספת מעבר ל-`api/explain.js`. שמירת החלטות היא כתיבה ישירה מהדפדפן ל-Supabase, ולכן לא נדרשת פונקציה.
 
 ### 3.3 נתונים
 
-- **Supabase Postgres:** שלוש טבלאות (סעיף 4).
+- **Supabase Postgres:** ארבע טבלאות (סעיף 4).
 - **Supabase Auth:** משתמש אחד שנוצר ידנית בדשבורד (סעיף 5).
-- **קובצי JSON בריפו:** הגדרות קבועות (סעיף 4.4).
-- **אין** Supabase Storage (אין העלאת קבצים) ואין מידע אישי של לקוחות Arbox.
+- **קובצי הדגמה בריפו:** עסקי הדמה (סעיף 8).
+- **אין** Supabase Storage: קובץ הנתונים לא נשמר, רק הנתונים המצרפיים. אין מידע אישי.
 
 ---
 
 ## 4. מבנה הנתונים
 
-שמות טבלאות ושדות באנגלית באותיות קטנות עם קו תחתון. התוכן בעברית (לפי course-stack.md).
+שמות טבלאות ושדות באנגלית באותיות קטנות עם קו תחתון. התוכן בעברית (לפי `course-stack.md`).
 
 ### 4.1 מיפוי ישויות עשרת ההיבטים
 
 | ישות | איפה היא יושבת |
 |---|---|
-| Business | `config/business.json` |
-| Data Source | `config/business.json` (השדה `data_source`) |
-| Metric Definition | `config/metrics.json` |
+| Business, Data Source | טבלה `business_config` |
+| Metric Definition | `business_config.definition` (JSON) |
 | Metric Value | טבלה `metric_values` |
 | Insight | טבלה `insights` |
 | Decision | טבלה `decisions`, `kind = 'kpi'` |
 | Outcome | עמודות `outcome_status` ו-`outcome` ב-`decisions` |
 | Management Case | טבלה `decisions`, `kind = 'manager'` |
-| Action | לא ממומשת ב-MVP |
+| Action | לא ממומשת בגרסת הקורס |
 
 ### 4.2 טבלאות
 
 ```sql
--- 1. ערכי מדדים מחושבים, לפי KPI, פילוח ושבוע
+-- 1. הגדרת העסק: שורה אחת בלבד בגרסת הקורס
+create table business_config (
+  id         int primary key default 1 check (id = 1),
+  name       text not null,
+  description text not null,          -- התיאור החופשי שהמנהל כתב (נתוני דמה בלבד בקורס)
+  definition jsonb not null,          -- נושאים, KPI, ספים, תחומי פעילות (סעיף 4.4)
+  source     text not null check (source in ('setup','demo')),
+  created_at timestamptz not null default now()
+);
+
+-- 2. ערכי מדדים מחושבים: לפי KPI, תחום פעילות, סוג לקוח ושבוע
 create table metric_values (
   id               uuid primary key default gen_random_uuid(),
-  kpi_key          text not null,                       -- מפתח מתוך config/metrics.json
-  segment_key      text not null default 'total',       -- 'total' או סוג מוצר
-  period_type      text not null check (period_type in ('week','month')),
-  period_start     date not null,                       -- ראשון (שבוע ישראלי)
+  kpi_key          text not null,                       -- מפתח מתוך definition
+  activity_key     text not null default 'total',       -- 'total' או מפתח תחום פעילות
+  customer_type    text not null default 'total' check (customer_type in ('total','new','existing')),
+  period_type      text not null default 'week' check (period_type = 'week'),
+  period_start     date not null,                       -- ראשון
   period_end       date not null,                       -- שבת
   value            numeric not null,
   previous_value   numeric,                             -- null אם אין תקופה קודמת
@@ -131,20 +141,20 @@ create table metric_values (
   change_pct       numeric,                             -- null אם previous_value הוא 0 או null
   threshold_status text not null check (threshold_status in ('normal','anomaly','unavailable')),
   computed_at      timestamptz not null default now(),
-  unique (kpi_key, segment_key, period_type, period_start)
+  unique (kpi_key, activity_key, customer_type, period_type, period_start)
 );
 
--- 2. תובנות AI, אחת לכל ערך חריג
+-- 3. תובנות AI, אחת לכל ערך חריג
 create table insights (
   id              uuid primary key default gen_random_uuid(),
   metric_value_id uuid not null unique references metric_values(id) on delete cascade,
   facts           jsonb not null,    -- המספרים המדויקים שנשלחו למודל
-  content         jsonb not null,    -- פלט המודל המאומת (סעיף 6.3)
+  content         jsonb not null,    -- פלט המודל המאומת (סעיף 6.4)
   model           text not null,     -- שם הדגם שיצר את התובנה
   created_at      timestamptz not null default now()
 );
 
--- 3. החלטות: החלטת KPI והחלטת מנהל
+-- 4. החלטות: החלטת KPI והחלטת מנהל
 create table decisions (
   id               uuid primary key default gen_random_uuid(),
   kind             text not null check (kind in ('kpi','manager')),
@@ -152,7 +162,8 @@ create table decisions (
   insight_id       uuid references insights(id) on delete set null,
   -- שדות החלטת KPI
   kpi_key          text,
-  segment_key      text not null default 'total',
+  activity_key     text not null default 'total',
+  customer_type    text not null default 'total',
   desired_direction text check (desired_direction in ('up','down')),
   check_date       date,
   -- שדות החלטת מנהל
@@ -185,25 +196,39 @@ create index on decisions (outcome_status, check_date);
 
 **נימוקי החלטות בעיצוב:**
 
-- `segment_key = 'total'` מייצג את הסכום הכולל, כך ששורה אחת מכסה גם KPI כולל וגם פילוח (F27).
-- `period_type` כולל `week` ו-`month`, אך ב-MVP נכתב רק `week` (ה-PRD: השוואה שבועית בשלב ראשון).
-- `outcome` היא עמודת JSON כי היא שייכת לשורה אחת (כלל הסטאק לרשימה או אובייקט ששייכים לשורה).
+- `activity_key = 'total'` ו-`customer_type = 'total'` מייצגים את הסכום הכולל, כך שאותה טבלה מכסה גם KPI כולל וגם חתכים.
+- `period_type` מוגבל ל-`week` בגרסת הקורס (**הנחה**, PRD סעיף 3).
+- `outcome` ו-`definition` הן עמודות JSON כי הן שייכות לשורה אחת (כלל הסטאק).
 - `facts` נשמר ב-`insights` כדי ש"הסבר לי" ישתמש באותם מספרים בדיוק ולא יחשב מחדש.
-- החלטות אינן ניתנות לעריכה או מחיקה מהדפדפן (ה-PRD לא דורש), ולכן אין policies של update או delete.
+- אין עריכה של החלטות מהדפדפן (ה-PRD לא דורש).
+- `business_config` מוגבלת לשורה אחת (`id = 1`) כי בגרסת הקורס יש עסק אחד (ריבוי עסקים הוא F26).
 
 ### 4.3 הרשאות ברמת טבלה (RLS)
 
-RLS מופעל על שלוש הטבלאות. אין policy למשתמש אנונימי, כלומר אנונימי לא קורא ולא כותב דבר.
+RLS מופעל על כל ארבע הטבלאות. אין policy למשתמש אנונימי, כלומר אנונימי לא קורא ולא כותב דבר.
 
 ```sql
-alter table metric_values enable row level security;
-alter table insights      enable row level security;
-alter table decisions     enable row level security;
+alter table business_config enable row level security;
+alter table metric_values   enable row level security;
+alter table insights        enable row level security;
+alter table decisions       enable row level security;
 
-create policy "owner reads metrics"   on metric_values for select to authenticated using (true);
-create policy "owner reads insights"  on insights      for select to authenticated using (true);
-create policy "owner reads decisions" on decisions     for select to authenticated using (true);
+-- קריאה: משתמש מחובר
+create policy "read" on business_config for select to authenticated using (true);
+create policy "read" on metric_values   for select to authenticated using (true);
+create policy "read" on insights        for select to authenticated using (true);
+create policy "read" on decisions       for select to authenticated using (true);
 
+-- כתיבה מהדפדפן: הגדרה ונתונים מצרפיים (upsert דורש insert ו-update)
+create policy "write" on business_config for insert to authenticated with check (true);
+create policy "write" on business_config for update to authenticated using (true) with check (true);
+create policy "write" on metric_values   for insert to authenticated with check (true);
+create policy "write" on metric_values   for update to authenticated using (true) with check (true);
+
+-- תובנות: נכתבות רק ע"י הפונקציה, בשם המשתמש (טוקן המשתמש, RLS חל)
+create policy "write" on insights for insert to authenticated with check (true);
+
+-- החלטות: הוספה בלבד
 create policy "owner creates decisions" on decisions for insert to authenticated
   with check (
     created_by = auth.uid()
@@ -211,59 +236,70 @@ create policy "owner creates decisions" on decisions for insert to authenticated
     and (kind <> 'kpi' or outcome_status = 'pending')
     and outcome is null
   );
+
+-- מחיקה: רק בהקמה מחדש, אחרי אישור מפורש של המנהל (סעיף 5.4)
+create policy "reset" on business_config for delete to authenticated using (true);
+create policy "reset" on metric_values   for delete to authenticated using (true);
+create policy "reset" on insights        for delete to authenticated using (true);
+create policy "reset" on decisions       for delete to authenticated using (true);
 ```
 
-- כתיבה ל-`metric_values`, ל-`insights` ולעדכון `decisions.outcome` נעשית רק על ידי n8n עם מפתח `service_role`, שעוקף RLS. אין policy כזו למשתמש מחובר.
+- עדכון `decisions.outcome` נעשה רק על ידי n8n עם מפתח `service_role`, שעוקף RLS. אין policy כזו למשתמש מחובר.
 - ההגבלה `check_date > current_date` מיישמת את ההנחה ב-PRD שתאריך בדיקה שעבר לא נקלט.
-- **החלטה:** כל משתמש מחובר נחשב "המנהל", כי ב-MVP יש משתמש אחד שנוצר ידנית (רמה 1 בסטאק). אסור ליצור משתמש נוסף ב-Supabase Auth.
+- **החלטה:** כל משתמש מחובר נחשב "המנהל", כי יש משתמש אחד שנוצר ידנית (רמה 1 בסטאק). אסור ליצור משתמש נוסף ב-Supabase Auth.
+- מחיקה בטבלאות מותרת למשתמש המחובר, אבל רק מסך ההקמה מציע אותה, אחרי אישור מפורש (סעיף 5.4).
+- **יש לאמת בבנייה:** שה-`upsert` של supabase-js עובד מול ה-policies האלה.
 
-### 4.4 קובצי הגדרות בריפו
+### 4.4 מבנה `business_config.definition`
 
-**`config/business.json`**
-
-```json
-{
-  "name": "FlyFit",
-  "timezone": "Asia/Jerusalem",
-  "week_starts_on": "sunday",
-  "history_starts_on": "2026-09-06",
-  "data_source": { "type": "arbox", "mode": "demo" },
-  "ai": { "model": "gemini-3.8-flash" }
-}
-```
-
-`mode` הוא `demo` (קורא את `config/demo_aggregates.json`) או `live` (קורא מ-Arbox).
-
-**`config/metrics.json`**
+מבנה זה הוא ה"חוזה" בין שיחת ההקמה, התבנית, האימות והחישוב. המפתחות נוצרים בקוד, לא ב-AI, ואין בהם עברית.
 
 ```json
 {
-  "kpis": [
-    { "key": "active_members", "label": "מנויים פעילים",     "unit": "count", "higher_is_better": true,  "threshold_pct": null },
-    { "key": "cancellations",  "label": "ביטולי מנוי",       "unit": "count", "higher_is_better": false, "threshold_pct": null },
-    { "key": "revenue",        "label": "הכנסות",            "unit": "ILS",   "higher_is_better": true,  "threshold_pct": null }
+  "version": 1,
+  "topics": [
+    {
+      "key": "leads",
+      "label": "מתעניינים",
+      "kpis": [
+        {
+          "key": "leads_1",
+          "label": "פניות חדשות",
+          "unit": "count",
+          "higher_is_better": true,
+          "additive": true,
+          "by_customer_type": false,
+          "definition": "מספר הפניות החדשות בשבוע",
+          "threshold_pct": 20
+        }
+      ]
+    },
+    { "key": "sales",   "label": "מכירות", "kpis": [] },
+    { "key": "finance", "label": "כספים",  "kpis": [] }
   ],
-  "segments": [
-    { "key": "total",        "label": "סה״כ" },
-    { "key": "subscription", "label": "מנוי" },
-    { "key": "punch_card",   "label": "כרטיסיה" },
-    { "key": "one_on_one",   "label": "אימון 1/1" },
-    { "key": "event",        "label": "אירוע" },
-    { "key": "retreat",      "label": "ריטריט" },
-    { "key": "unclassified", "label": "לא מסווג" }
+  "activity_areas": [
+    { "key": "a1", "label": "תחום ראשון" }
   ]
 }
 ```
 
-- `threshold_pct: null` פירושו "אין סף מוגדר": לא מסומנת חריגה והסטטוס `unavailable`. ערכי הסף ייקבעו כשיהיו נתונים (הנחה פתוחה ב-PRD).
-- **החלטה:** חריגה מוגדרת כ-`abs(change_pct) >= threshold_pct`, בשני הכיוונים, כי גם שיפור חריג דורש תשומת לב ניהולית. `higher_is_better` משמש לניסוח התובנה ולצבע/אייקון בלבד.
-- הקובץ נטען גם על ידי הדפדפן (תוויות) וגם על ידי n8n (קריאה ל-`raw.githubusercontent.com` של הריפו הציבורי), כך שיש מקור אמת אחד.
+- שלושה נושאים בדיוק, בסדר קבוע ובמפתחות קבועים: `leads` (מתעניינים), `sales` (מכירות), `finance` (כספים).
+- ארבעה KPI בכל נושא. מפתח KPI: `<topic_key>_<מספר>`.
+- `unit`: `count`, `ILS`, `percent` או `number`.
+- `additive`: האם מותר לחבר את ערכי החתכים לסכום (למשל פניות כן, אחוז המרה לא).
+- `by_customer_type`: האם ה-KPI מוצג גם לפי חדש וקיים.
+- מפתח תחום פעילות: `a<מספר>`. בין 1 ל-6 תחומים (**הנחה**).
+- `threshold_pct`: מספר חיובי. `null` פירושו "אין סף" (לא מסומנת חריגה).
+- **החלטה:** חריגה מוגדרת כ-`abs(change_pct) >= threshold_pct`, בשני הכיוונים, כי גם שיפור חריג דורש תשומת לב. `higher_is_better` משמש לניסוח התובנה ולצבע/אייקון בלבד.
+- התוויות והתיאורים בעברית מגיעים מההצעה של ה-AI אחרי אישור המנהל.
 
-**`config/demo_aggregates.json`**: נתוני דמה במבנה הנורמלי (סעיף 7.1), לפחות 5 שבועות, לכל KPI ולכל פילוח.
+### 4.5 חלופה בטוחה לטבלה הרביעית
 
-### 4.5 נתוני דוגמה
+אם האישור לטבלה הרביעית יתברר כלא תקף: להסיר את `business_config`, ולשמור את `name`, `description`, `definition` ו-`source` בעמודת JSON אחת בשורה מיוחדת (`kind = 'config'`) בטבלה קיימת. זה מחייב להתאים את ה-constraints של `decisions` או `metric_values`, ולכן ההמלצה היא להשאיר את הטבלה הרביעית כל עוד האישור בתוקף.
 
-קובץ `supabase/seed.sql` מכניס לפחות 5 שורות לכל טבלה, כדי שכל מסך יוצג מלא (כלל הסטאק: תמיד יש נתוני דוגמה, והטבלה נבנית לפני המסך).
+### 4.6 נתוני דוגמה
+
+קובץ `supabase/seed.sql` מכניס לפחות 5 שורות לכל טבלה (כלל הסטאק). לצורך זה משמש עסק דמה אחד, ראו סעיף 8.
 
 ---
 
@@ -271,38 +307,41 @@ create policy "owner creates decisions" on decisions for insert to authenticated
 
 ### 5.1 תפקידים
 
-לפי ה-PRD, ב-MVP יש תפקיד אחד: **מנהל העסק**, שהוא בעל או בעלת העסק. התפקידים העתידיים (מנהל תחום, יועץ, מנהל מערכת) אינם ממומשים ואין להם שדה בטבלאות.
+תפקיד אחד: **מנהל העסק**. התפקידים העתידיים (יועץ, מנהל תחום) אינם ממומשים ואין להם שדה בטבלאות.
 
 ### 5.2 רמת הרשאות
 
-רמה 1 של סטאק הקורס:
-
-- משתמש אחד ב-Supabase Auth, שנוצר ידנית בדשבורד של Supabase (אימייל וסיסמה).
-- באתר יש טופס כניסה בלבד. אין הרשמה, הזמנות, שחזור סיסמה או כניסה עם Google.
-- ההגנה היא בהרשאות הטבלה (סעיף 4.3), לא בהסתרת דף. הריפו ציבורי ואין בו דף סודי או סיסמה שנבדקת ב-JavaScript.
+רמה 1 של סטאק הקורס: משתמש אחד ב-Supabase Auth, שנוצר ידנית בדשבורד (אימייל וסיסמה). באתר יש טופס כניסה בלבד. ההגנה היא בהרשאות הטבלה (סעיף 4.3), לא בהסתרת דף. הריפו ציבורי ואין בו דף סודי או סיסמה שנבדקת ב-JavaScript.
 
 ### 5.3 זרימת כניסה
 
 1. `index.html`: `supabase.auth.signInWithPassword({ email, password })`.
-2. הצלחה: הפניה ל-`snapshot.html`. כישלון: הודעה כללית "פרטי הכניסה שגויים", בלי פירוט.
+2. הצלחה: אם אין הגדרת עסק, הפניה ל-`setup.html`. אחרת ל-`snapshot.html`. כישלון: הודעה כללית "פרטי הכניסה שגויים", בלי פירוט.
 3. כל דף פנימי קורא ל-`getSession()` בטעינה. אם אין סשן, הפניה ל-`index.html`.
 4. כפתור "יציאה" קורא ל-`signOut()`.
-5. קריאה ל-`/api/explain` נושאת את `access_token` של הסשן בכותרת `Authorization: Bearer`.
+5. קריאה ל-`/api/ai` נושאת את `access_token` של הסשן בכותרת `Authorization: Bearer`.
+
+### 5.4 הקמה מחדש
+
+הקמה מחדש (PRD הנחה 9) מוחקת את ההגדרה הקודמת ואת כל הנתונים שנוצרו איתה: מדדים, תובנות והחלטות. **החלטה:** כי יש עסק אחד, ושארית של עסק קודם תתערבב בנתונים החדשים. המסך מציג אזהרה ברורה (מה יימחק ובאילו כמויות), ומבצע מחיקה רק אחרי אישור מפורש של המנהל.
 
 ---
 
 ## 6. שכבת ה-AI
 
-### 6.1 שני מקומות קריאה
+### 6.1 מקום הקריאה
 
-| מקום | מה מייצר | איך נקרא |
+כל קריאות ה-AI עוברות דרך `api/ai.js`. אין קריאות ל-Gemini מ-n8n או מהדפדפן. **החלטה:** כך המפתח נשמר במקום אחד בלבד (משתנה סביבה ב-Vercel), ושם הדגם מוגדר במקום אחד, `GEMINI_MODEL`.
+
+| פעולה | פיצ'ר | מי מפעיל |
 |---|---|---|
-| תהליך W1 ב-n8n | תובנה (F9) | צומת HTTP Request ישירות ל-Gemini, עם מפתח ב-Credentials של n8n (מותר לפי הסטאק, כי באוטומציה אין דפדפן) |
-| `api/explain.js` | "הסבר לי" (F11) | מהדפדפן דרך הפונקציה, אף פעם לא ישירות |
+| `setup` | F1 הקמה בשיחה | הדפדפן, ב-`setup.html` |
+| `insight` | F11 יצירת תובנה | הדפדפן, אחרי העלאת קובץ, לכל חריגה |
+| `explain` | F13 "הסבר לי" | הדפדפן, בלחיצה |
 
 ### 6.2 הקריאה ל-Gemini
 
-לפי תיעוד Gemini API (quickstart ו-Structured output):
+לפי תיעוד Gemini API (quickstart ו-Structured output), כפי שנבדק בגרסה 1.0:
 
 ```
 POST https://generativelanguage.googleapis.com/v1beta/interactions
@@ -321,18 +360,103 @@ Content-Type: application/json
 ```
 
 - קריאת התוצאה: במערך `steps`, הצעד עם `type == "model_output"`, בתוכו פריט ב-`content` עם `type == "text"`, והשדה `text` הוא מחרוזת JSON שמפענחים.
-- שם הדגם: `gemini-3.8-flash` (מאושר ב-tech-stack.md). ב-n8n הוא נקרא מ-`config/business.json`. בפונקציה הוא נקרא ממשתנה הסביבה `GEMINI_MODEL`. שני הערכים חייבים להיות זהים, והדגם בפועל נשמר ב-`insights.model`.
+- שם הדגם: `gemini-3.8-flash` (מאושר ב-`tech-stack.md`), ממשתנה הסביבה `GEMINI_MODEL`. הדגם בפועל נשמר ב-`insights.model`.
 - **החלטה:** כל ההוראות נכנסות בשדה `input`, כי שדה נפרד להוראות מערכת לא אומת בתיעוד שנבדק.
-- בקורס המפתח הוא מהשכבה החינמית ונשלחים רק נתוני דמה. למעבר לנתוני FlyFit אמיתיים מחליפים את ערך המפתח בשני המקומות (בלי שינוי קוד).
+- **לא נבדק מחדש בגרסה זו:** הקריאה והפורמט. יש לאמת מול התיעוד העדכני בבנייה.
+- בקורס המפתח הוא מהשכבה החינמית ונשלחים רק נתוני דמה. למעבר לנתונים אמיתיים מחליפים את ערך המפתח בלבד.
 
-### 6.3 מה נשלח למודל (תובנה)
+### 6.3 עיקרון משותף לכל הפעולות
 
-אובייקט `facts`, שנשמר גם ב-`insights.facts`. הוא מכיל מספרים שחושבו בקוד בלבד, בלי מידע אישי:
+כל פעולה בפונקציה:
+
+1. מטפלת בבקשת OPTIONS ובכותרות CORS. מאשרת רק את `ALLOWED_ORIGIN` (כתובת האתר ב-GitHub Pages).
+2. מאמתת את הסשן: `GET {SUPABASE_URL}/auth/v1/user` עם `apikey: <המפתח הציבורי>` ו-`Authorization: Bearer <access_token>`. אם נכשל, 401.
+3. מאמתת את גוף הבקשה ומגבילה אורך קלט.
+4. קוראת ל-Gemini עם סכמת פלט, ומאמתת את התוצאה בקוד לפני החזרה.
+5. מחזירה JSON תמיד: `{ "ok": true, ... }` או `{ "ok": false, "error": "unauthorized" | "bad_request" | "not_found" | "ai_unavailable" }`, בלי מפתח ובלי שגיאה גולמית של ספק.
+
+קודי סטטוס: 200, 400, 401, 404, 502 (כשל במודל או בפלט לא תקין).
+
+### 6.4 `setup`: הקמה בשיחה (F1)
+
+**בקשה:**
+
+```json
+{ "action": "setup", "description": "...", "answers": ["...", "..."] }
+```
+
+- `description`: תיאור העסק, עד 1,000 תווים (**הנחה**).
+- `answers`: אופציונלי, התשובות לשאלות ההבהרה, עד 3, כל אחת עד 300 תווים (**הנחה**).
+- הפונקציה חסרת מצב: הדפדפן שולח את כל ההיסטוריה בכל קריאה.
+
+**שני סוגי תשובה:**
+
+```json
+{ "ok": true, "type": "questions", "questions": ["...", "..."] }
+{ "ok": true, "type": "proposal",  "proposal": { ... } }
+```
+
+- בקריאה הראשונה (בלי `answers`) המודל מחליט אם לשאול (עד 3 שאלות קצרות) או להציע ישר.
+- בקריאה עם `answers` הוא חייב להחזיר הצעה. **החלטה:** סבב שאלות אחד בלבד, כדי לשמור על "עד 3 שאלות" ועל פשטות.
+
+**סכמת ההצעה (`proposal`):**
 
 ```json
 {
-  "kpi": { "key": "revenue", "label": "הכנסות", "unit": "ILS", "higher_is_better": true },
-  "segment": { "key": "subscription", "label": "מנוי" },
+  "topics": [
+    { "key": "leads",   "kpis": [ { "label": "", "unit": "count", "higher_is_better": true, "additive": true, "by_customer_type": false, "definition": "", "threshold_pct": 20 } ] },
+    { "key": "sales",   "kpis": [ ... ] },
+    { "key": "finance", "kpis": [ ... ] }
+  ],
+  "activity_areas": [ { "label": "" } ]
+}
+```
+
+**אימות בקוד לפני החזרה:**
+
+- שלושה נושאים בדיוק, במפתחות `leads`, `sales`, `finance`.
+- ארבעה KPI בכל נושא.
+- `label` לא ריק עד 40 תווים, `definition` לא ריק עד 200 תווים.
+- `unit` מתוך הרשימה. `threshold_pct` מספר גדול מ-0 ועד 100, או `null`.
+- 1 עד 6 תחומי פעילות, כל `label` עד 40 תווים, בלי כפילויות.
+- אין מפתחות נוספים.
+
+אם האימות נכשל, ההצעה לא מוחזרת: 502 והודעה כללית בדפדפן, עם אפשרות לנסות שוב.
+
+**אחרי האימות** (בדפדפן) הקוד מוסיף את המפתחות (`leads_1`, `a1` וכו') ומציג את ההצעה לתיקון. שום דבר לא נשמר לפני אישור המנהל.
+
+**הוראות בפרומפט:**
+
+1. לבסס את ההצעה רק על התיאור והתשובות. אסור להמציא נתונים על העסק.
+2. להציע רק KPI שאפשר למדוד מנתונים מצרפיים שבועיים.
+3. לא לבצע חישובים. הספים הם הצעה בלבד.
+4. הפלט בעברית פשוטה.
+5. אין להזכיר שמות או פרטים מזהים של אנשים.
+
+### 6.5 `insight`: יצירת תובנה (F11)
+
+**בקשה:** `{ "action": "insight", "metric_value_id": "<uuid>" }`
+
+הפונקציה:
+
+1. בודקת ש-`metric_value_id` הוא UUID תקין.
+2. קוראת את שורת `metric_values` ואת עד ארבע התקופות הקודמות של אותו KPI, תחום וסוג לקוח, מ-PostgREST **עם טוקן המשתמש** (RLS חל). וקוראת את `business_config.definition` לתוויות.
+3. בודקת ש-`threshold_status = 'anomaly'`, אחרת 400.
+4. בונה את `facts` (סעיף 6.6) ומפעילה את Gemini.
+5. מאמתת את הפלט (סעיף 6.7), ו**שומרת** שורה ב-`insights` עם טוקן המשתמש.
+6. מחזירה את התובנה.
+
+**אידמפוטנטי:** אם כבר קיימת תובנה לאותו `metric_value_id`, היא מוחזרת בלי קריאה למודל.
+
+### 6.6 מה נשלח למודל (תובנה)
+
+אובייקט `facts`, שנשמר גם ב-`insights.facts`. מספרים שחושבו בקוד בלבד, בלי מידע אישי:
+
+```json
+{
+  "topic": { "key": "finance", "label": "כספים" },
+  "kpi": { "key": "finance_1", "label": "הכנסות", "unit": "ILS", "higher_is_better": true, "definition": "..." },
+  "segment": { "activity": { "key": "a1", "label": "..." }, "customer_type": "total" },
   "period": { "type": "week", "start": "2026-09-27", "end": "2026-10-03" },
   "current_value": 41200,
   "previous_value": 48900,
@@ -350,14 +474,14 @@ Content-Type: application/json
 - `history` כולל עד ארבע תקופות קודמות שקיימות ב-`metric_values`.
 - `unavailable` מפרט במפורש מה לא חושב מראש, כדי שהמודל יציין זאת ולא ישלים בעצמו.
 
-**הוראות בפרומפט (מקור: שכבת ה-AI בעשרת ההיבטים):**
+**הוראות בפרומפט (מקור: שכבת ה-AI ב-`product-10-definitions.md`):**
 
 1. אסור להמציא נתונים, סיבות או קשרים שאינם במידע שסופק.
 2. יש להבדיל במפורש בין עובדה, מגמה שנצפתה, השערה והמלצה.
 3. אין לבצע חישובים עצמאיים או להשלים נתון חסר. אם נתון לא חושב מראש, יש לציין שהוא אינו זמין.
 4. הפלט בעברית, בשפה פשוטה, בלי ז'רגון.
 
-### 6.4 מה חוזר מהמודל (תובנה)
+### 6.7 מה חוזר מהמודל (תובנה)
 
 סכמת `response_format.schema`:
 
@@ -376,109 +500,131 @@ Content-Type: application/json
 }
 ```
 
-**אימות בקוד לפני שימוש (כלל הסטאק: הקוד בודק את המבנה):**
+**אימות בקוד לפני שימוש:**
 
 - כל חמשת המפתחות קיימים, מסוג מחרוזת, לא ריקים, ואורך כל אחד עד 600 תווים.
 - אין מפתחות נוספים.
-- אם האימות נכשל, התובנה לא נשמרת (ראו 6.6).
+- אם האימות נכשל, התובנה לא נשמרת (סעיף 6.9).
 
-### 6.5 "הסבר לי"
+### 6.8 `explain`: "הסבר לי" (F13)
 
-הדפדפן שולח `POST /api/explain` עם גוף `{"insight_id": "<uuid>"}` וכותרת `Authorization: Bearer <access_token>`.
+**בקשה:** `{ "action": "explain", "insight_id": "<uuid>" }`
 
-הפונקציה:
+הפונקציה קוראת את `facts` ו-`content` של התובנה מ-PostgREST עם טוקן המשתמש, בונה פרומפט באותן הוראות כמו ב-6.6 בתוספת בקשה להסביר לעומק, קוטעת את הקלט ל-8,000 תווים, וקוראת ל-Gemini עם סכמה `{"explanation": string}` ואימות (מחרוזת לא ריקה עד 1,500 תווים). ההסבר לא נשמר במסד, ונוצר לפי בקשה.
 
-1. מטפלת בבקשת OPTIONS ובכותרות CORS. מאשרת רק את הכתובת `ALLOWED_ORIGIN` (כתובת האתר ב-GitHub Pages).
-2. בודקת ש-`insight_id` הוא UUID תקין, אחרת מחזירה 400.
-3. מאמתת את הסשן: `GET {SUPABASE_URL}/auth/v1/user` עם הכותרות `apikey: <המפתח הציבורי>` ו-`Authorization: Bearer <access_token>`. אם נכשל, מחזירה 401.
-4. קוראת את שורת התובנה מ-PostgREST (`{SUPABASE_URL}/rest/v1/insights?id=eq.<id>&select=facts,content`) **עם אותו access_token של המשתמש**, כך ש-RLS חל. לכן אין צורך במפתח `service_role` בפונקציה.
-5. בונה פרומפט מ-`facts` ומ-`content` שנשמרו, באותן הוראות כמו בסעיף 6.3, בתוספת בקשה להסביר לעומק. קוטעת את הקלט ל-8,000 תווים לכל היותר.
-6. קוראת ל-Gemini עם סכמת פלט `{"explanation": string}` ואימות: מחרוזת לא ריקה עד 1,500 תווים.
-7. מחזירה JSON.
-
-**תגובות הפונקציה** (תמיד JSON, גם בשגיאה, ללא מפתח או שגיאה גולמית של ספק):
-
-```json
-{ "ok": true,  "explanation": "..." }
-{ "ok": false, "error": "unauthorized" | "bad_request" | "not_found" | "ai_unavailable" }
-```
-
-- קודי סטטוס: 200, 400, 401, 404, 502 (כשל במודל או בפלט לא תקין).
-- הדפדפן מציג הודעה כללית בעברית לכל `ok: false`.
-- הסבר לא נשמר במסד. הוא נוצר לפי בקשה.
-
-### 6.6 כשלים
+### 6.9 כשלים
 
 | מצב | התנהגות |
 |---|---|
-| כשל בקריאה ל-Gemini בתהליך W1, או פלט לא תקין | לא נשמרת שורה ב-`insights`. החריגה עדיין מוצגת במסך בלי טקסט תובנה (הנחה 8 ב-PRD). ההרצה הבאה תנסה שוב, כי בדיקת "אין תובנה לחריגה" מתבצעת בכל הרצה. |
+| כשל בקריאה ל-Gemini, או פלט לא תקין, ב-`insight` | לא נשמרת שורה ב-`insights`. החריגה מוצגת בלי טקסט תובנה (PRD הנחה 8), עם כפתור "נסה שוב ליצור תובנה". |
 | נתון חסר בקלט | נרשם ב-`facts.unavailable`, והמודל מציין שאינו זמין. |
-| כשל ב"הסבר לי" | הודעה כללית בעברית. אין חשיפת שגיאה. |
+| כשל ב-`setup` או `explain` | הודעה כללית בעברית. אין חשיפת שגיאה. |
+| מגבלת קצב של השכבה החינמית | **לא אומתה.** ראו 6.10 ו-12. |
 
-### 6.7 בדיקות AI
+### 6.10 מגבלת מספר קריאות
 
-קובץ אחד בשורש הריפו, `ai-tests.md` (לפי הסטאק): לפחות עשרה קלטי דמה, התוצאה הצפויה לכל אחד, ואחוז ההצלחה. כולל השוואה בין `gemini-3.8-flash` ל-`gemini-3.5-flash-lite` ובדיקת איכות העברית (אושר ב-tech-stack.md).
+אחרי העלאה, הדפדפן קורא ל-`insight` רק לחריגות של **השבוע האחרון בנתונים**, ברצף ולא במקביל, ועד 6 קריאות להעלאה (**הנחה**). חריגות נוספות מקבלות כפתור "צור תובנה". כך מוגבל מספר הקריאות ומכובדת מגבלת הקצב הלא ידועה של השכבה החינמית.
+
+### 6.11 בדיקות AI
+
+קובץ אחד בשורש הריפו, `ai-tests.md` (לפי הסטאק): לפחות עשרה קלטי דמה, התוצאה הצפויה לכל אחד, ואחוז ההצלחה. כולל קלטים להצעת ההקמה: תיאורי עסק שונים, תיאור קצר מדי ותיאור שמנסה לגרום ל-AI להמציא נתונים. כולל השוואה בין `gemini-3.8-flash` ל-`gemini-3.5-flash-lite` ובדיקת איכות העברית (אושר ב-`tech-stack.md`).
 
 ---
 
-## 7. אינטגרציות, APIs ואוטומציות
+## 7. חוזה קובץ הנתונים (F3, F4)
 
-### 7.1 אינטגרציות
+### 7.1 מבנה
 
-| מערכת | מי קורא | איך | הערות |
-|---|---|---|---|
-| Arbox API | n8n בלבד | צומת HTTP Request. המפתח ב-Credentials של n8n | **לא אומת.** רישום של צד שלישי מציין אימות בכותרת `accesstoken`. שמות הדוחות, השדות, נתוני עבר ושדה סוג המוצר ייקבעו בבדיקת ה-API. |
-| Gemini API | n8n ו-`api/explain.js` | סעיף 6.2 | |
-| Supabase | הדפדפן (מפתח ציבורי + סשן), n8n (`service_role`), הפונקציה (סשן המשתמש) | supabase-js בדפדפן, REST (PostgREST) ב-n8n ובפונקציה | |
-| GitHub Pages (קבצי config) | n8n | HTTP GET ל-`raw.githubusercontent.com` | הריפו ציבורי |
+פורמט "ארוך": שורה אחת לכל ערך. קובץ CSV (UTF-8) או xlsx, בגיליון הראשון.
 
-**החלטה:** n8n כותב ל-Supabase דרך צומת HTTP Request ולא דרך צומת ה-Supabase המובנה, כי הצומת המובנה לא מציע פעולת upsert (לפי תיעוד n8n), והצינור חייב להיות אידמפוטנטי. הכתיבה: `POST {SUPABASE_URL}/rest/v1/metric_values?on_conflict=kpi_key,segment_key,period_type,period_start` עם הכותרת `Prefer: resolution=merge-duplicates`. יש לאמת התנהגות זו בעת הבנייה.
-
-**מבנה נורמלי פנימי** (החוזה בין צומת הנרמול לשאר השרשרת). מערך של רשומות מצטברות:
-
-```json
-{ "period_start": "2026-09-27", "period_end": "2026-10-03",
-  "kpi_key": "revenue", "segment_key": "subscription", "value": 41200 }
-```
-
-- בקורס (`mode: demo`) המערך נקרא מ-`config/demo_aggregates.json`.
-- ב-`mode: live` המערך נבנה מדוחות Arbox בצומת Code אחד ("נרמול Arbox"). זה הצומת היחיד הספציפי ל-Arbox.
-- הנרמול מסכם ומשמיט כל מידע אישי. לעולם לא נכתב ל-Supabase שם, טלפון או מזהה של מתאמן.
-
-### 7.2 תהליך W1: צינור נתונים יומי (F1, F2, F3, F4, F6, F7, F8, F9)
-
-**הפעלות:** Schedule Trigger יומי ב-06:00 (שעון ישראל) ו-Manual Trigger לטעינת היסטוריה.
-
-| שלב | צומת | מה עושה |
+| עמודה | חובה | תיאור |
 |---|---|---|
-| 1 | Code: קביעת שבועות | מההפעלה המתוזמנת: שני השבועות המלאים האחרונים (ראשון עד שבת). מההפעלה הידנית: כל השבועות המלאים מ-`history_starts_on` (`2026-09-06`, הראשון המלא אחרי תחילת נתוני Arbox ב-1.9.2026) ועד השבוע המלא האחרון. לכל שבוע נוסף גם השבוע שלפניו לצורך "תקופה קודמת", אבל רק אם הוא מתחיל ב-`history_starts_on` או אחריו. שבוע חלקי אף פעם לא משמש להשוואה. |
-| 2 | HTTP: טעינת config | `business.json` ו-`metrics.json` מהריפו. |
-| 3 | IF: מצב | `demo` או `live`. |
-| 4 | HTTP/Code: מקור נתונים | `demo`: קריאת `demo_aggregates.json`. `live`: משיכה מ-Arbox ונרמול. |
-| 5 | Code: חישוב | לכל KPI, פילוח ושבוע: `previous_value` מהשבוע הקודם, `change_abs`, `change_pct`, `threshold_status`. לוגיקה: אם אין שבוע קודם (כולל שבוע ראשון מלא), או שהוא 0, או `threshold_pct` הוא `null`, הסטטוס `unavailable`. אחרת `anomaly` כש-`abs(change_pct) >= threshold_pct`, ו-`normal` בכל מקרה אחר. החישוב בקוד, לא במודל. |
-| 6 | HTTP: upsert | כתיבה ל-`metric_values` (סעיף 7.1). |
-| 7 | HTTP + Code: חריגות בשבוע האחרון | שליפת שורות `threshold_status = 'anomaly'` בשבוע המלא האחרון בלבד ללא תובנה קיימת, ובניית `facts` כולל `history`. |
-| 8 | HTTP: Gemini | קריאה אחת לכל חריגה, באופן רציף. |
-| 9 | Code: אימות | לפי סעיף 6.4. |
-| 10 | HTTP: insert | כתיבה ל-`insights`. |
+| `week_start` | כן | תאריך תחילת השבוע (יום ראשון), בפורמט `YYYY-MM-DD` |
+| `kpi_key` | כן | מפתח ה-KPI מההגדרה |
+| `kpi_label` | לא | שם ה-KPI בעברית, לנוחות המנהל בלבד. הקוד מתעלם ממנה |
+| `activity_key` | כן | `total` או מפתח תחום פעילות מההגדרה |
+| `customer_type` | כן | `total`, `new` או `existing` |
+| `value` | כן | מספר. נקודה עשרונית. ריק פירושו "אין נתון" |
 
-**החלטה:** תובנות נוצרות רק לשבוע המלא האחרון. טעינת ההיסטוריה ממלאת `metric_values` לכל השבועות, אבל לא מייצרת תובנות לשבועות ישנים, כדי להישאר בתוך מגבלת 180 השניות של n8n Cloud בתקופת הניסיון ולמנוע עלות מיותרת.
+### 7.2 הפקת התבנית (F3)
 
-**תכונות:**
+אחרי אישור ההגדרה, הקוד מפיק קובץ CSV (UTF-8 עם BOM) הכולל שורה לכל שילוב, עם `value` ריק, ל-8 שבועות אחרונים שלפני תאריך ההפקה (**הנחה**):
 
-- **אידמפוטנטי:** הרצה חוזרת באותו יום לא יוצרת כפילויות (upsert על המפתח הייחודי, ו-`unique` על `insights.metric_value_id`).
-- **כשל:** אם משיכה או חישוב נכשלים, ההרצה נעצרת לפני כל כתיבה (שלב 6), כך שאין נתונים חלקיים. הכשל נרשם בלוג ההרצות של n8n.
-- **שבוע ישראלי:** ראשון עד שבת, `week_starts_on` ב-`business.json`.
+- כל KPI × `total` × `total`.
+- כל KPI × כל תחום פעילות × `total`.
+- ל-KPI עם `by_customer_type`: גם `new` ו-`existing`, עם `total` בתחום.
 
-### 7.3 תהליך W2: בדיקת תוצאה (F13)
+### 7.3 אימות (F4)
 
-**הפעלה:** Schedule Trigger יומי ב-06:30 (שעון ישראל), אחרי W1.
+הקוד קורא את הקובץ עם SheetJS ומאמת את כל השורות לפני שכותב משהו. **כל שגיאה דוחה את כל הקובץ**, עם הודעה שמציינת מה השגיאה ובאיזו שורה. אין שמירה חלקית.
+
+| בדיקה | תוצאה |
+|---|---|
+| עמודה חובה חסרה, או גיליון ריק | נדחה |
+| `week_start` לא תאריך תקין, או לא יום ראשון | נדחה |
+| `kpi_key`, `activity_key` או `customer_type` לא קיימים בהגדרה | נדחה |
+| `customer_type` שאינו `total` ל-KPI בלי `by_customer_type` | נדחה |
+| `value` שאינו מספר (ואינו ריק) | נדחה |
+| שורה כפולה (אותו KPI, תחום, סוג לקוח ושבוע) | נדחה |
+| גודל קובץ מעל 2MB או מעל 10,000 שורות | נדחה (**הנחה**, תוגדר בבנייה) |
+| ל-KPI `additive`, סכום ערכי התחומים בשבוע שונה מהסכום הכולל (בהפרש מעל אחוז אחד) | נדחה (**הנחה** לגבי הסובלנות) |
+| שורת `total` חסרה לשבוע | לא שגיאה: הערך מסומן "לא זמין" |
+| `value` ריק | לא שגיאה: מדלגים על השורה |
+
+### 7.4 קידוד
+
+קובץ CSV שנשמר ב-Excel בקידוד ישן עלול להציג עברית משובשת. הבדיקה מבוצעת בשלב 2 (ראו `tech-stack.md` סעיף 2.4). התבנית עצמה בקידוד UTF-8, ואפשר להעלות גם xlsx.
+
+---
+
+## 8. עסקי דמה (F5)
+
+- שני עסקי דמה לפחות, בתחומים שונים (התחומים עדיין לא נבחרו, פתוח).
+- לכל עסק תיקייה `demo/<key>/` עם שני קבצים: `definition.json` (במבנה של סעיף 4.4) ו-`data.csv` (בחוזה של סעיף 7).
+- בחירת עסק דמה טוענת את שני הקבצים **באותו מסלול כמו העלאה אמיתית**: כתיבת `business_config` עם `source = 'demo'`, ואז אימות, חישוב ושמירה. כך עסקי הדמה בודקים את החוזה עצמו.
+- בכל עסק דמה לפחות 8 שבועות, עם חריגה מכוונת אחת לפחות בכל נושא.
+- **החלטה:** כל המקורות הם קבצים סטטיים בריפו. אין עסק דמה בקוד.
+
+---
+
+## 9. זרימות עיקריות
+
+### 9.1 הקמה והעלאה
+
+| שלב | מי | מה |
+|---|---|---|
+| 1 | הדפדפן | המנהל כותב תיאור ושולח `setup` |
+| 2 | הפונקציה | מחזירה שאלות הבהרה או הצעה |
+| 3 | הדפדפן | אם התקבלו שאלות, שולח שוב עם התשובות ומקבל הצעה |
+| 4 | הדפדפן | מוסיף מפתחות, מציג הצעה לתיקון ואישור |
+| 5 | הדפדפן | אם קיימת הגדרה, מציג אזהרת מחיקה ומחכה לאישור (סעיף 5.4) |
+| 6 | הדפדפן | שומר `business_config` ומפיק תבנית להורדה |
+| 7 | הדפדפן | המנהל מעלה קובץ. קריאה, אימות (סעיף 7.3) |
+| 8 | הדפדפן | `engine.js` מחשב לכל KPI, תחום, סוג לקוח ושבוע: `previous_value`, `change_abs`, `change_pct`, `threshold_status` |
+| 9 | הדפדפן | `upsert` ל-`metric_values` על המפתח הייחודי, בקבוצות אם נדרש. כל קבוצה היא בקשה אחת |
+| 10 | הדפדפן | שולף חריגות של השבוע האחרון בנתונים ללא תובנה, וקורא ל-`insight` (סעיף 6.10) |
+
+### 9.2 חישוב (`engine.js`)
+
+פונקציה טהורה. לכל שורה (KPI, תחום, סוג לקוח), ממוינת לפי שבוע:
+
+- `previous_value` = הערך בשבוע הקודם לו, אם קיים ובדיוק שבוע לפניו. אחרת `null`.
+- `change_abs = value - previous_value`. `null` אם אין קודם.
+- `change_pct = change_abs / previous_value * 100`. `null` אם הקודם הוא 0 או `null`.
+- `threshold_status`: `unavailable` אם אין `change_pct` או `threshold_pct` הוא `null`. אחרת `anomaly` כש-`abs(change_pct) >= threshold_pct`, ו-`normal` בכל מקרה אחר.
+- שבוע ללא קודם מיד לפניו, או ללא `total`, מסומן "לא זמין" ולא מחושב בניחוש.
+
+**שבוע אחרון:** מוגדר כשבוע האחרון שיש בו נתונים בקובץ, לא לפי התאריך של היום, כדי שעסקי דמה יציגו תמונת מצב מלאה בכל תאריך. **החלטה.**
+
+### 9.3 W2: בדיקת תוצאה (F15)
+
+**הפעלה:** Schedule Trigger יומי ב-06:30, אזור הזמן של n8n מוגדר ל-`Asia/Jerusalem`. **החלטה:** שעה יומית שנבחרה ע"י, לא נתון מהמקורות.
 
 | שלב | מה עושה |
 |---|---|
 | 1 | HTTP GET: `decisions?kind=eq.kpi&outcome_status=eq.pending&check_date=lte.<היום>` (בשירות `service_role`). |
-| 2 | לכל החלטה: שליפת `baseline` = שורת `metric_values` העדכנית ביותר עבור `kpi_key` ו-`segment_key` שבה `period_end <= created_at` של ההחלטה. שליפת `current` = השורה העדכנית ביותר עם `period_end <= היום`. |
-| 3 | Code: אם חסרה אחת מהשתיים, `outcome_status = 'unavailable'` ו-`outcome = {"reason": "no_data"}`. אחרת מחשבים `change_abs` ו-`change_pct`, ו-`direction_met` (`true` כש-`desired_direction = 'up'` והשינוי חיובי, או `'down'` והשינוי שלילי; אחרת `false`). |
+| 2 | לכל החלטה: `baseline` = שורת `metric_values` העדכנית ביותר עבור `kpi_key`, `activity_key` ו-`customer_type` שלה, שבה `period_end <= created_at` של ההחלטה. `current` = השורה העדכנית ביותר עם `period_end <= היום`. |
+| 3 | Code: אם חסרה אחת מהשתיים, `outcome_status = 'unavailable'` ו-`outcome = {"reason": "no_data"}`. אחרת מחשבים `change_abs`, `change_pct` ו-`direction_met` (`true` כש-`desired_direction = 'up'` והשינוי חיובי, או `'down'` והשינוי שלילי; אחרת `false`). |
 | 4 | HTTP PATCH ל-`decisions`: `outcome_status = 'done'` ו-`outcome`, לפי `id` ובתנאי `outcome_status = 'pending'`. |
 
 מבנה `outcome` ב-`done`:
@@ -490,57 +636,50 @@ Content-Type: application/json
 
 התנאי `outcome_status = 'pending'` בעדכון מונע דריסה בהרצה חוזרת.
 
-### 7.4 מתזמנים
+**שים לב:** עסקי הדמה מכילים נתונים של שבועות קבועים בעבר. החלטה שנשמרת היום עם תאריך בדיקה עתידי תיבדק מול הערך האחרון שבטבלה, שאולי לא ישתנה. כדי להדגים את הלולאה בקורס, צריך תרחיש שבו מועלה קובץ נוסף עם שבוע חדש אחרי שמירת ההחלטה. **פתוח:** תרחיש ההדגמה המדויק.
 
-| תהליך | תדירות | הערה |
-|---|---|---|
-| W1 | יומי, 06:00 | **החלטה:** יומי, כי המנהל נכנס יומית (הנחה 2 ב-PRD, טעונה אישור) |
-| W2 | יומי, 06:30 | |
-| W1 ידני | לפי צורך | טעינת היסטוריה (F2) |
+### 9.4 מתזמנים
 
-אזור הזמן של סביבת n8n מוגדר ל-`Asia/Jerusalem`.
+| תהליך | תדירות |
+|---|---|
+| W2 | יומי, 06:30 |
 
-### 7.5 מה שהמערכת לא מבצעת
-
-בלי שליחת הודעות, בלי כתיבה חזרה ל-Arbox, ובלי פעולות אוטומטיות בשם המנהל. ההחלטות נשמרות ולא מופעלות.
+אוטומציה רצה בתדירות הנמוכה ביותר שמספיקה להדגמה (כלל הסטאק).
 
 ---
 
-## 8. מפתחות סודיים
+## 10. מפתחות סודיים
 
-הריפו ציבורי, וכל מה שבדפדפן גלוי לכל אדם (חוק הברזל ב-course-stack.md).
+הריפו ציבורי, וכל מה שבדפדפן גלוי לכל אדם (חוק הברזל ב-`course-stack.md`).
 
 | מפתח / ערך | איפה יושב | מי קורא |
 |---|---|---|
-| מפתח Gemini | משתנה סביבה `GEMINI_API_KEY` בפרויקט Vercel, וב-Credentials של n8n | הפונקציה, n8n |
-| מפתח Arbox | Credentials של n8n | n8n בלבד |
+| מפתח Gemini | משתנה סביבה `GEMINI_API_KEY` בפרויקט Vercel | הפונקציה בלבד |
 | מפתח `service_role` של Supabase | Credentials של n8n | n8n בלבד |
 | `SUPABASE_URL`, המפתח הציבורי (`anon`) | `js/config.js` בריפו, ומשתני סביבה בפונקציה | הדפדפן והפונקציה (מותר: המפתח הציבורי מוגן בהרשאות הטבלה) |
 | `ALLOWED_ORIGIN`, `GEMINI_MODEL` | משתני סביבה בפונקציה | הפונקציה (לא סודיים) |
 | סיסמת המשתמש | Supabase Auth בלבד | אף קוד שלנו |
 
-**מה אסור שיגיע לדפדפן:**
-
-- מפתח Gemini, מפתח Arbox ומפתח `service_role`.
-- נתוני מתאמנים או כל מידע אישי מזהה (הם אינם נשמרים כלל).
-- שגיאות גולמיות מ-Gemini, מ-Arbox או מ-Supabase.
+**מה אסור שיגיע לדפדפן:** מפתח Gemini, מפתח `service_role`, ושגיאות גולמיות מ-Gemini או מ-Supabase.
 
 **כללים:**
 
 - מפתח סודי חי בשני מקומות לכל היותר: משתני הסביבה של הפונקציה ו-Credentials של n8n. אין מפתח בקוד, בקובץ הגדרות או בקובצי ה-JSON שבריפו.
-- קובצי ה-JSON של תהליכי n8n בתיקיית `n8n/` יוצאים בלי ערכי Credentials, ולפני כל קומיט יש לוודא שאין בהם מפתח.
+- קובץ ה-JSON של תהליך n8n בתיקיית `n8n/` יוצא בלי ערכי Credentials, ולפני כל קומיט יש לוודא שאין בו מפתח.
 - אחרי כל שינוי במשתנה סביבה ב-Vercel נדרשת פריסה חדשה (Redeploy).
-- מעבר מנתוני דמה לנתוני אמת: החלפת ערך מפתח Gemini בשני המקומות בלבד.
+- מעבר מנתוני דמה לנתוני אמת: החלפת ערך מפתח Gemini בלבד.
+- **פרטיות:** תיאור העסק והנתונים בקורס הם נתוני דמה. השכבה החינמית משתמשת בתוכן לשיפור מוצרי הספק (`course-stack.md`).
 
 ---
 
-## 9. מבנה התיקיות
+## 11. מבנה התיקיות
 
 ריפו אחד, ענף `main` בלבד, תיקיית השורש משמשת את GitHub Pages ואת Vercel.
 
 ```
 /
 ├── index.html                  # כניסה
+├── setup.html                  # הקמה והעלאה
 ├── snapshot.html               # תמונת מצב ניהולית
 ├── insights.html               # תובנות, "הסבר לי", שמירת החלטת KPI
 ├── decisions.html              # החלטות ותוצאות, החלטת מנהל
@@ -549,80 +688,92 @@ Content-Type: application/json
 ├── js/
 │   ├── config.js               # SUPABASE_URL, מפתח ציבורי, כתובת הפונקציה
 │   ├── supabase.js             # לקוח, בדיקת סשן, יציאה
+│   ├── setup.js                # שיחת ההקמה ואישור ההצעה
+│   ├── filecontract.js         # תבנית, קריאה ואימות קובץ
+│   ├── engine.js               # חישוב השוואה, שינוי וחריגה (פונקציות טהורות)
 │   ├── snapshot.js
 │   ├── insights.js
 │   ├── decisions.js
 │   └── ui.js                   # עזרי תצוגה (סטטוס עם מילה ואייקון, פורמט מספרים)
-├── config/
-│   ├── business.json
-│   ├── metrics.json
-│   └── demo_aggregates.json
+├── vendor/
+│   └── xlsx.full.min.js        # SheetJS Community Edition
+├── demo/
+│   ├── <business-a>/definition.json
+│   ├── <business-a>/data.csv
+│   ├── <business-b>/definition.json
+│   └── <business-b>/data.csv
 ├── api/
-│   └── explain.js              # הפונקציה היחידה (Vercel)
+│   └── ai.js                   # הפונקציה היחידה (Vercel): setup, insight, explain
 ├── lib/                        # קוד משותף לפונקציה, מחוץ ל-api/
 │   ├── gemini.js               # קריאה ל-Gemini ופענוח התגובה
 │   ├── validate.js             # אימות סכמות
-│   └── prompt.js               # בניית הפרומפט
+│   └── prompt.js               # בניית הפרומפטים
 ├── n8n/
-│   ├── w1-pipeline.json        # ייצוא תהליך W1 (בלי Credentials)
-│   └── w2-outcome-check.json   # ייצוא תהליך W2
+│   └── w2-outcome-check.json   # ייצוא תהליך W2 (בלי Credentials)
 ├── supabase/
 │   ├── schema.sql              # טבלאות, אילוצים, RLS
 │   └── seed.sql                # נתוני דוגמה
 ├── ai-tests.md                 # בדיקות AI
 ├── package.json                # { "type": "module" }, בלי תלויות מיותרות
-├── docs/                       # PRD.md, ARCHITECTURE.md, tech-stack.md
+├── docs/                       # PRD.md, ARCHITECTURE.md, tech-stack.md, MVP.md
 └── .gitignore
 ```
 
-- **החלטה:** `api/explain.js` מייצא `export default { async fetch(request) { ... } }` (תקן Web, לפי תיעוד Vercel), ו-`package.json` כולל `"type": "module"`.
+- **החלטה:** `api/ai.js` מייצא `export default { async fetch(request) { ... } }` (תקן Web, לפי תיעוד Vercel כפי שנבדק בגרסה 1.0), ו-`package.json` כולל `"type": "module"`. יש לאמת בבנייה.
 - כל קוד שאינו נקודת כניסה נמצא ב-`lib/`, כי Vercel יוצר פונקציה נפרדת לכל קובץ שבתוך `api/`.
-- אין `node_modules` בריפו, ואין ספריות בצד הלקוח מלבד supabase-js מה-CDN.
+- אין `node_modules` בריפו, ואין ספריות בצד הלקוח מלבד supabase-js מה-CDN ו-SheetJS שנשמר ב-`vendor/`.
 
 ---
 
-## 10. מסכים ושאילתות
+## 12. מסכים ושאילתות
 
 | מסך | מה מציג | שאילתות |
 |---|---|---|
-| `snapshot.html` | שלושה כרטיסי KPI (סה״כ) עם ערך, שינוי וסטטוס, פילוח לפי סוג מוצר מתחת לכל כרטיס, רשימת חריגות עם הטקסט של התובנה, והחלטות פתוחות | `metric_values` לשבוע המלא האחרון (`order period_end desc limit 1` ואז סינון לפי `period_start`); `insights` עם `metric_value_id` בשורות חריגות; `decisions` עם `outcome_status = pending` |
-| `insights.html` | רשימת תובנות, פירוט (חמשת החלקים בנפרד: עובדה, מגמה, חשיבות, השערה, המלצה), כפתור "הסבר לי", וטופס שמירת החלטת KPI | `insights` עם join ל-`metric_values`; קריאה ל-`/api/explain`; `insert` ל-`decisions` |
+| `setup.html` | שיחת ההקמה, ההצעה לתיקון, התבנית להורדה, העלאת קובץ ובחירת עסק דמה | `business_config`; קריאות ל-`/api/ai` (`setup`); `upsert` ל-`business_config` ול-`metric_values` |
+| `snapshot.html` | כרטיס לכל אחד משלושת הנושאים, עם 4 ה-KPI שלו (ערך, שינוי וסטטוס), חלוקה לפי תחום פעילות וסוג לקוח, רשימת חריגות עם טקסט התובנה, והחלטות פתוחות | `business_config`; `metric_values` לשבוע האחרון בנתונים (`order period_end desc limit 1` ואז סינון לפי `period_start`); `insights` של שורות חריגות; `decisions` עם `outcome_status = pending` |
+| `insights.html` | רשימת תובנות, פירוט (חמשת החלקים בנפרד: עובדה, מגמה, חשיבות, השערה, המלצה), כפתור "הסבר לי", וטופס שמירת החלטת KPI | `insights` עם join ל-`metric_values`; קריאה ל-`/api/ai` (`explain`); `insert` ל-`decisions` |
 | `decisions.html` | רשימת החלטות עם KPI, כיוון, תאריך בדיקה ותוצאה, וטופס החלטת מנהל (כולל סימון חד-פעמי/תקדים) | `decisions order created_at desc`; `insert` ל-`decisions` |
 
 **מצבים ריקים וחסרים:**
 
-- אין חריגות: הודעה "אין חריגות השבוע" (**החלטה:** נדרשת כדי שהמסך לא יראה שבור).
-- ערך `unavailable` או פילוח חסר: מוצג "לא זמין", לא 0.
-- פילוח "לא מסווג" מוצג כשורה רגילה.
-- בשדות הטקסט החופשי של החלטת מנהל מוצגת הנחיה: "אין להזין שם או פרטים מזהים של לקוח או שותף" (הנחה 12 ב-PRD).
+- אין הגדרה: הפניה ל-`setup.html`.
+- אין חריגות: הודעה "אין חריגות השבוע" (**החלטה:** כדי שהמסך לא יראה שבור).
+- ערך `unavailable` או חתך חסר: מוצג "לא זמין", לא 0.
+- בשדות הטקסט החופשי של החלטת מנהל ובתיאור העסק מוצגת הנחיה: "אין להזין שם או פרטים מזהים של אדם".
 
 ---
 
-## 11. כיסוי דרישות ה-PRD
+## 13. כיסוי דרישות ה-PRD
 
 | פיצ'ר | איפה ממומש |
 |---|---|
-| F1, F2 | W1 (שלבים 1 עד 4) |
-| F3 | צומת הנרמול ב-W1 |
-| F4, F5 | סעיף 4 |
-| F6, F7, F8, F27 | W1 שלב 5 |
-| F9, F10 | W1 שלבים 7 עד 10, סעיף 6, `ai-tests.md` |
-| F11 | `api/explain.js` |
-| F12 | `insights.html`, `insert` ל-`decisions` |
-| F13 | W2 |
-| F14 | `decisions.html`, `decisions.kind = 'manager'` |
-| F16, F17, F18, F19 | סעיפים 3.1 ו-10 |
-| F26 | סעיף 5 |
+| F1 | `api/ai.js` (`setup`), `js/setup.js`, סעיף 6.4 |
+| F2 | `setup.html`, סעיף 9.1 |
+| F3 | `js/filecontract.js`, סעיף 7.2 |
+| F4 | `js/filecontract.js`, סעיף 7.3 |
+| F5 | `demo/`, סעיף 8 |
+| F6, F7 | סעיף 4, `js/engine.js`, `upsert` ל-`metric_values` |
+| F8, F9, F10 | `js/engine.js`, סעיף 9.2 |
+| F11, F12 | `api/ai.js` (`insight`), סעיף 6, `ai-tests.md` |
+| F13 | `api/ai.js` (`explain`), סעיף 6.8 |
+| F14, F16 | `insights.html` ו-`decisions.html`, `insert` ל-`decisions` |
+| F15 | W2, סעיף 9.3 |
+| F17 | סעיף 5 |
+| F18, F19, F20, F21 | סעיפים 3.1 ו-12 |
 
 ---
 
-## 12. נקודות פתוחות והנחות
+## 14. נקודות פתוחות והנחות
 
-1. **Arbox API:** לא אומת. שמות דוחות, שדות, נתוני עבר (קיימים מספטמבר 2026), שדה סיווג מוצר, והאם הכנסות וביטולים זמינים. עד האימות המערכת רצה במצב `demo`.
-2. **ערכי הסף:** `threshold_pct` ריק בכל ה-KPI עד שייקבעו.
-3. **upsert דרך REST:** ההתנהגות של `on_conflict` ו-`Prefer: resolution=merge-duplicates` ב-Supabase REST לא נבדקה במחקר, ויש לאמת בעת הבנייה.
-4. **שעת הרצה ושעון:** 06:00 ו-06:30, ואזור הזמן `Asia/Jerusalem` בהגדרות n8n, הם החלטות שלי ולא נתון מהמקורות.
-5. **הגדרת שבוע:** ראשון עד שבת, לפי המקובל בישראל. אם Arbox מדווח אחרת, יש להתאים.
-6. **כל משתמש מחובר הוא המנהל:** תקף כל עוד קיים משתמש אחד בלבד ב-Supabase Auth.
-7. **n8n Cloud בתקופת הניסיון:** 1,000 הרצות ו-180 שניות להרצה (לפי tech-stack.md). הצינור תוכנן להישאר בגבולות אלה.
-8. **שם הדגם בשני מקומות:** `config/business.json` (ל-n8n) ומשתנה הסביבה `GEMINI_MODEL` (לפונקציה) חייבים להישאר זהים.
+1. **עסקי הדמה:** התחומים עדיין לא נבחרו, ועד אז המבנה ב-`demo/` הוא שלד.
+2. **תרחיש הדגמה לבדיקת תוצאה:** נתוני הדמה קבועים בעבר, ובדיקת תוצאה צריכה שבוע חדש. צריך לקבוע איך מדגימים את זה (סעיף 9.3). פתוח.
+3. **עדכון ל-PRD (F8):** קריטריון הקבלה "סכום החתכים שווה לסכום הכולל" צריך להתייחס רק ל-KPI ניתנים לחיבור (סעיף 2, שורה 5). ישונה ב-PRD אם תאשרי.
+4. **מחיקה בהקמה מחדש:** מוחקת הגדרה ונתונים (סעיף 5.4). מרחיבה את PRD הנחה 9.
+5. **הערכים הלא מאומתים:** גבולות הגודל של הקובץ, מספר מקסימלי של 6 קריאות תובנה בהעלאה, מגבלת הקצב של Gemini בשכבה החינמית, וההתנהגות של `upsert` מול ה-policies.
+6. **תבנית ל-8 שבועות:** מספר השבועות בתבנית הוא הנחה.
+7. **שעת הרצה וחשבון זמן:** 06:30 ו-`Asia/Jerusalem` הן החלטות שלי ולא נתון מהמקורות.
+8. **הגדרת שבוע:** ראשון עד שבת, לפי המקובל בישראל.
+9. **כל משתמש מחובר הוא המנהל:** תקף כל עוד קיים משתמש אחד בלבד ב-Supabase Auth.
+10. **n8n Cloud בתקופת הניסיון:** 1,000 הרצות ו-180 שניות להרצה (לפי `tech-stack.md`). W2 קטן מאוד ביחס למגבלות אלה.
+11. **קריאת Gemini ופורמט הפונקציה ב-Vercel:** נבדקו בגרסה 1.0 ולא נבדקו מחדש. יש לאמת בבנייה.
+12. **טבלה רביעית:** אושרה ע"י בעלת המוצר, עם חלופת גיבוי (סעיף 4.5).
