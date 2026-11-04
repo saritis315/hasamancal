@@ -306,3 +306,6 @@ a{color:var(--info-text)}
 code.num{background:var(--surface-sunken);padding:0 var(--s-1);border-radius:4px}
 .editor-kpi,.editor-head{grid-template-columns:minmax(110px,1.3fr) minmax(150px,2fr) 110px 136px 96px}
 @media (max-width:767px){.editor-kpi{grid-template-columns:1fr}}
+
+/* טקסט ארוך בלי רווחים (למשל כתובת) לא יוצר גלישה אופקית */
+.bubble,.notice,.list-row__sub,.tag{overflow-wrap:anywhere}
