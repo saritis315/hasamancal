@@ -1,0 +1,157 @@
+{
+  "version": 1,
+  "topics": [
+    {
+      "key": "leads",
+      "label": "מתעניינים",
+      "kpis": [
+        {
+          "key": "leads_1",
+          "label": "פניות חדשות",
+          "unit": "count",
+          "higher_is_better": true,
+          "additive": true,
+          "by_customer_type": false,
+          "definition": "מספר הפניות החדשות בשבוע (טלפון, הודעות וטופס)",
+          "threshold_pct": 20
+        },
+        {
+          "key": "leads_2",
+          "label": "שיעורי ניסיון שנקבעו",
+          "unit": "count",
+          "higher_is_better": true,
+          "additive": true,
+          "by_customer_type": false,
+          "definition": "מספר שיעורי הניסיון שנקבעו בשבוע",
+          "threshold_pct": 25
+        },
+        {
+          "key": "leads_3",
+          "label": "הגעה לשיעור ניסיון",
+          "unit": "percent",
+          "higher_is_better": true,
+          "additive": false,
+          "by_customer_type": false,
+          "definition": "אחוז הנרשמים לשיעור ניסיון שהגיעו אליו",
+          "threshold_pct": 15
+        },
+        {
+          "key": "leads_4",
+          "label": "עלות לליד",
+          "unit": "ILS",
+          "higher_is_better": false,
+          "additive": false,
+          "by_customer_type": false,
+          "definition": "הוצאות השיווק בשבוע חלקי מספר הפניות החדשות",
+          "threshold_pct": 20
+        }
+      ]
+    },
+    {
+      "key": "sales",
+      "label": "מכירות",
+      "kpis": [
+        {
+          "key": "sales_1",
+          "label": "רכישות מנוי וכרטיסייה",
+          "unit": "count",
+          "higher_is_better": true,
+          "additive": true,
+          "by_customer_type": true,
+          "definition": "מספר המנויים והכרטיסיות שנמכרו בשבוע. חדש: רכישה ראשונה אחרי שיעור ניסיון. קיים: חידוש מנוי או כרטיסייה",
+          "threshold_pct": 20
+        },
+        {
+          "key": "sales_2",
+          "label": "המרה משיעור ניסיון לרכישה",
+          "unit": "percent",
+          "higher_is_better": true,
+          "additive": false,
+          "by_customer_type": false,
+          "definition": "אחוז משתתפי שיעור הניסיון שרכשו מנוי או כרטיסייה",
+          "threshold_pct": 15
+        },
+        {
+          "key": "sales_3",
+          "label": "תפוסת שיעורים",
+          "unit": "percent",
+          "higher_is_better": true,
+          "additive": false,
+          "by_customer_type": false,
+          "definition": "אחוז המקומות שאוישו מתוך כלל המקומות בשיעורים",
+          "threshold_pct": 10
+        },
+        {
+          "key": "sales_4",
+          "label": "ביטולי מנוי",
+          "unit": "count",
+          "higher_is_better": false,
+          "additive": true,
+          "by_customer_type": false,
+          "definition": "מספר המנויים שביטלו בשבוע",
+          "threshold_pct": 25
+        }
+      ]
+    },
+    {
+      "key": "finance",
+      "label": "כספים",
+      "kpis": [
+        {
+          "key": "finance_1",
+          "label": "הכנסות",
+          "unit": "ILS",
+          "higher_is_better": true,
+          "additive": true,
+          "by_customer_type": true,
+          "definition": "סך ההכנסות בשבוע. חדש: משתתפי שיעור ניסיון ורוכשים חדשים. קיים: מנוי חודשי וכרטיסייה",
+          "threshold_pct": 15
+        },
+        {
+          "key": "finance_2",
+          "label": "הוצאות",
+          "unit": "ILS",
+          "higher_is_better": false,
+          "additive": true,
+          "by_customer_type": false,
+          "definition": "סך ההוצאות בשבוע (שכר מדריכים, שכירות ושיווק)",
+          "threshold_pct": 20
+        },
+        {
+          "key": "finance_3",
+          "label": "רווח",
+          "unit": "ILS",
+          "higher_is_better": true,
+          "additive": true,
+          "by_customer_type": true,
+          "definition": "הכנסות פחות הוצאות בשבוע. חדש וקיים כמו בהכנסות",
+          "threshold_pct": 20
+        },
+        {
+          "key": "finance_4",
+          "label": "הכנסה ממוצעת למשתתף",
+          "unit": "ILS",
+          "higher_is_better": true,
+          "additive": false,
+          "by_customer_type": false,
+          "definition": "ההכנסות חלקי מספר המשתתפים הייחודיים בשבוע",
+          "threshold_pct": 10
+        }
+      ]
+    }
+  ],
+  "activity_areas": [
+    {
+      "key": "a1",
+      "label": "בד אווירי"
+    },
+    {
+      "key": "a2",
+      "label": "חישוק אווירי"
+    },
+    {
+      "key": "a3",
+      "label": "ערסל"
+    }
+  ]
+}
