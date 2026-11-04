@@ -269,7 +269,7 @@ a{color:var(--info-text)}
 .fieldset legend{padding:0;margin-bottom:var(--s-1)}
 .empty{padding:var(--s-2) 0}
 
-.topic-grid{display:grid;gap:var(--s-5);grid-template-columns:1fr}
+.topic-grid{display:grid;gap:var(--s-5);grid-template-columns:minmax(0,1fr)}
 @media (min-width:768px){.topic-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.topic-grid>:last-child{grid-column:1 / -1}}
 @media (min-width:1024px){.topic-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.topic-grid>:last-child{grid-column:auto}}
 
@@ -293,7 +293,7 @@ a{color:var(--info-text)}
 }
 
 /* ---------- הקמה והעלאה ---------- */
-.setup-split{display:grid;gap:var(--s-5);grid-template-columns:1fr}
+.setup-split{display:grid;gap:var(--s-5);grid-template-columns:minmax(0,1fr)}
 @media (min-width:1024px){.setup-split{grid-template-columns:minmax(260px,1fr) minmax(0,2.4fr);align-items:start}}
 .editor-kpi,.editor-head{grid-template-columns:1.3fr 2fr .9fr 1fr .9fr}
 .editor-head{display:grid;gap:var(--s-3);padding-bottom:var(--s-2)}
