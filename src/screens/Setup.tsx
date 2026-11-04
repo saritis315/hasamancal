@@ -11,6 +11,7 @@ import { ProposalEditor } from '../components/ProposalEditor.tsx'
 import { Stepper } from '../components/Stepper.tsx'
 import { Topbar } from '../components/Topbar.tsx'
 import { UploadStep } from '../components/UploadStep.tsx'
+import { useFocusInvalid } from '../components/useFocusInvalid.ts'
 
 /** הקמה והעלאה (F1 עד F5): שלושה שלבים, או העלאת נתונים נוספים כשכבר יש עסק. */
 export default function Setup() {
@@ -39,6 +40,8 @@ function SetupFlow() {
   const [busy, setBusy] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [errors, setErrors] = useState<{ name?: string; description?: string }>({})
+
+  useFocusInvalid(errors)
 
   useEffect(() => {
     let cancelled = false

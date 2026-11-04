@@ -87,7 +87,7 @@ export function ProposalEditor(props: ProposalEditorProps) {
           const label = TOPICS.find((x) => x.key === t.key)?.label ?? t.key
           return (
             <section key={t.key} className="card">
-              <Accordion defaultOpen={ti === 0} trigger={<h3 className="t-h2">{label}</h3>}>
+              <Accordion defaultOpen={ti === 0} trigger={<span className="t-h2">{label}</span>}>
                 <div className="editor-head t-small muted" aria-hidden="true">
                   {['שם', 'הגדרה', 'יחידה', 'כיוון טוב', 'סף חריגה (%)'].map((h) => <span key={h}>{h}</span>)}
                 </div>

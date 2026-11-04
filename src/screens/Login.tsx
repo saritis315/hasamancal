@@ -5,6 +5,7 @@ import { getSession, signIn } from '../lib/auth.ts'
 import { Field } from '../components/Field.tsx'
 import { Logo } from '../components/Logo.tsx'
 import { Notice } from '../components/Notice.tsx'
+import { useFocusInvalid } from '../components/useFocusInvalid.ts'
 
 /** התחברות (F17, DESIGN.md סעיף 4.1): אימייל וסיסמה בלבד. אין הרשמה, שחזור סיסמה או כניסה עם Google. */
 export default function Login() {
@@ -14,6 +15,8 @@ export default function Login() {
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({})
   const [failed, setFailed] = useState(false)
   const [busy, setBusy] = useState(false)
+
+  useFocusInvalid(errors)
 
   // אחרי כניסה: אם אין הגדרת עסק, הקמה. אחרת, תמונת מצב.
   async function goAfterLogin() {
@@ -32,10 +35,7 @@ export default function Login() {
     setFailed(false)
     const next = { email: email.trim() ? undefined : 'יש להזין אימייל', password: password ? undefined : 'יש להזין סיסמה' }
     setErrors(next)
-    if (next.email || next.password) {
-      requestAnimationFrame(() => document.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus())
-      return
-    }
+    if (next.email || next.password) return
     setBusy(true)
     const res = await signIn(email, password)
     if (!res.ok) { setBusy(false); setFailed(true); return } // הודעה כללית, בלי פירוט
@@ -45,6 +45,7 @@ export default function Login() {
   return (
     <main className="login" id="main">
       <div className="card login__card stack-lg">
+        <h1 className="visually-hidden">התחברות</h1>
         <div className="t-display"><Logo /></div>
         <p className="t-body-lg secondary">לדעת מה קורה. להחליט מה לעשות.</p>
         <form className="stack" noValidate onSubmit={(e) => void submit(e)}>

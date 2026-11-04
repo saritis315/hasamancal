@@ -7,6 +7,7 @@ import { Icon } from './Icon.tsx'
 import { Notice } from './Notice.tsx'
 import { Num } from './NumText.tsx'
 import { Segmented } from './Segmented.tsx'
+import { useFocusInvalid } from './useFocusInvalid.ts'
 
 interface DecisionPanelProps {
   def: Definition
@@ -29,6 +30,7 @@ export function DecisionPanel({ def, metrics, presets, onClose, onSaved }: Decis
   const [errors, setErrors] = useState<Errors>({})
   const [saveError, setSaveError] = useState<{ title: string; text: string } | null>(null)
   const [busy, setBusy] = useState(false)
+  useFocusInvalid(errors, panelRef)
 
   // החלטת מדד
   const [kpiKey, setKpiKey] = useState(presets.kpi_key ?? '')
@@ -90,10 +92,7 @@ export function DecisionPanel({ def, metrics, presets, onClose, onSaved }: Decis
     setSaveError(null)
     const e = validate()
     setErrors(e)
-    if (Object.keys(e).length) {
-      requestAnimationFrame(() => panelRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus())
-      return
-    }
+    if (Object.keys(e).length) return
     const payload: DecisionSaveReq = mode === 'kpi'
       ? { kind: 'kpi', kpi_key: kpiKey, activity_key: 'total', customer_type: 'total', decision_text: kText.trim(),
           desired_direction: kDir as Direction, check_date: kDate, insight_id: presets.insight_id ?? null }
