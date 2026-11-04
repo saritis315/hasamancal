@@ -1,0 +1,157 @@
+{
+  "version": 1,
+  "topics": [
+    {
+      "key": "leads",
+      "label": "מתעניינים",
+      "kpis": [
+        {
+          "key": "leads_1",
+          "label": "פניות חדשות",
+          "unit": "count",
+          "higher_is_better": true,
+          "additive": true,
+          "by_customer_type": false,
+          "definition": "מספר הפניות החדשות בשבוע (טפסי יצירת קשר והודעות)",
+          "threshold_pct": 20
+        },
+        {
+          "key": "leads_2",
+          "label": "נרשמים לתוכן חינמי",
+          "unit": "count",
+          "higher_is_better": true,
+          "additive": true,
+          "by_customer_type": true,
+          "definition": "מספר הנרשמים לתוכן חינמי בשבוע. חדש: לקוח חדש. קיים: לקוח חוזר או חבר מועדון",
+          "threshold_pct": 25
+        },
+        {
+          "key": "leads_3",
+          "label": "עלות לליד",
+          "unit": "ILS",
+          "higher_is_better": false,
+          "additive": false,
+          "by_customer_type": false,
+          "definition": "הוצאות השיווק בשבוע חלקי מספר הפניות החדשות",
+          "threshold_pct": 20
+        },
+        {
+          "key": "leads_4",
+          "label": "המרה מליד לרוכש",
+          "unit": "percent",
+          "higher_is_better": true,
+          "additive": false,
+          "by_customer_type": false,
+          "definition": "אחוז הפניות החדשות שרכשו קורס",
+          "threshold_pct": 15
+        }
+      ]
+    },
+    {
+      "key": "sales",
+      "label": "מכירות",
+      "kpis": [
+        {
+          "key": "sales_1",
+          "label": "רכישות",
+          "unit": "count",
+          "higher_is_better": true,
+          "additive": true,
+          "by_customer_type": true,
+          "definition": "מספר הרכישות בשבוע. חדש: לקוח חדש. קיים: לקוח חוזר או חבר מועדון",
+          "threshold_pct": 20
+        },
+        {
+          "key": "sales_2",
+          "label": "ערך הזמנה ממוצע",
+          "unit": "ILS",
+          "higher_is_better": true,
+          "additive": false,
+          "by_customer_type": false,
+          "definition": "סכום ההכנסות מרכישות חלקי מספר הרכישות",
+          "threshold_pct": 15
+        },
+        {
+          "key": "sales_3",
+          "label": "התחלת קורס אחרי רכישה",
+          "unit": "percent",
+          "higher_is_better": true,
+          "additive": false,
+          "by_customer_type": false,
+          "definition": "אחוז הרוכשים שהתחילו את הקורס תוך שבוע מהרכישה",
+          "threshold_pct": 10
+        },
+        {
+          "key": "sales_4",
+          "label": "החזרים",
+          "unit": "count",
+          "higher_is_better": false,
+          "additive": true,
+          "by_customer_type": false,
+          "definition": "מספר ההחזרים הכספיים שניתנו בשבוע",
+          "threshold_pct": 30
+        }
+      ]
+    },
+    {
+      "key": "finance",
+      "label": "כספים",
+      "kpis": [
+        {
+          "key": "finance_1",
+          "label": "הכנסות",
+          "unit": "ILS",
+          "higher_is_better": true,
+          "additive": true,
+          "by_customer_type": true,
+          "definition": "סך ההכנסות בשבוע. חדש: לקוח חדש. קיים: לקוח חוזר או חבר מועדון",
+          "threshold_pct": 15
+        },
+        {
+          "key": "finance_2",
+          "label": "הוצאות שיווק",
+          "unit": "ILS",
+          "higher_is_better": false,
+          "additive": true,
+          "by_customer_type": false,
+          "definition": "סך ההוצאות על פרסום וקידום בשבוע",
+          "threshold_pct": 20
+        },
+        {
+          "key": "finance_3",
+          "label": "רווח גולמי",
+          "unit": "ILS",
+          "higher_is_better": true,
+          "additive": true,
+          "by_customer_type": true,
+          "definition": "הכנסות פחות עלויות ישירות בשבוע. חדש: לקוח חדש. קיים: לקוח חוזר או חבר מועדון",
+          "threshold_pct": 20
+        },
+        {
+          "key": "finance_4",
+          "label": "אחוז רווח גולמי",
+          "unit": "percent",
+          "higher_is_better": true,
+          "additive": false,
+          "by_customer_type": false,
+          "definition": "הרווח הגולמי כאחוז מההכנסות",
+          "threshold_pct": 10
+        }
+      ]
+    }
+  ],
+  "activity_areas": [
+    {
+      "key": "a1",
+      "label": "נגרות ורהיטים"
+    },
+    {
+      "key": "a2",
+      "label": "שיפוצים וצביעה"
+    },
+    {
+      "key": "a3",
+      "label": "תפירה וטקסטיל"
+    }
+  ]
+}
