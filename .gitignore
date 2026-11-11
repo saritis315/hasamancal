@@ -7,3 +7,6 @@ desktop.ini
 *.log
 .vscode/
 .idea/
+
+# Graphify output (regenerated)
+graphify-out/

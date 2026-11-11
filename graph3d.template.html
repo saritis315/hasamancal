@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>הסמנכל – גרף ידע 3D</title>
+<style>
+  html,body{margin:0;height:100%;background:#070b18;overflow:hidden;font-family:"Segoe UI",Arial,sans-serif;color:#e8ecf6}
+  canvas{display:block}
+  #title{position:fixed;top:14px;right:18px;pointer-events:none}
+  #title h1{margin:0;font-size:20px}
+  #title p{margin:3px 0 0;font-size:12px;opacity:.65}
+  #search{position:fixed;top:14px;left:50%;transform:translateX(-50%);width:260px;padding:8px 12px;border-radius:20px;border:1px solid #2c3a6b;background:rgba(15,22,45,.85);color:#fff;font-size:14px;outline:none}
+  #legend{position:fixed;bottom:12px;right:14px;max-height:55vh;overflow:auto;background:rgba(12,18,38,.82);border:1px solid #232f5c;border-radius:12px;padding:8px 10px;font-size:12px;width:210px}
+  #legend div{display:flex;align-items:center;gap:7px;padding:2px 0;cursor:pointer;opacity:.9}
+  #legend div:hover{opacity:1}
+  #legend div.off{opacity:.3}
+  #legend i{width:10px;height:10px;border-radius:50%;flex:none}
+  #legend span.n{margin-inline-start:auto;opacity:.5}
+  #panel{position:fixed;top:60px;left:14px;width:310px;max-width:calc(100vw - 28px);background:rgba(15,22,45,.9);border:1px solid #2c3a6b;border-radius:12px;padding:12px 14px;display:none}
+  #panel h2{margin:0 0 4px;font-size:16px;line-height:1.35}
+  #panel .tag{font-size:11px;color:#8fb4ff;margin-bottom:6px;direction:ltr;text-align:right}
+  #panel p{margin:6px 0 0;font-size:13px;line-height:1.5;opacity:.92}
+  #panel ul{margin:6px 0 0;padding:0 16px;font-size:12px;max-height:140px;overflow:auto}
+  #panel li{cursor:pointer;padding:1px 0}
+  #panel li:hover{color:#8fb4ff}
+  #bar{position:fixed;bottom:12px;left:14px;display:flex;gap:8px}
+  #bar button{background:rgba(15,22,45,.85);color:#e8ecf6;border:1px solid #2c3a6b;border-radius:16px;padding:6px 12px;font-size:12px;cursor:pointer}
+  #bar button:hover{border-color:#8fb4ff}
+</style>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+"three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
+</script>
+</head>
+<body>
+<div id="title"><h1>גרף הידע של הסמנכל</h1><p id="stats"></p></div>
+<input id="search" placeholder="חיפוש צומת…" autocomplete="off">
+<div id="panel"><h2></h2><div class="tag"></div><p></p><ul></ul></div>
+<div id="legend"></div>
+<div id="bar"><button id="rot">סיבוב אוטומטי: פעיל</button><button id="replay">הפעלה מחדש</button></div>
+
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+
+const DATA = /*DATA*/null;
+const N = DATA.nodes.length;
+document.getElementById('stats').textContent = `${N} צמתים · ${DATA.links.length} קשרים · ${DATA.comms.length} קהילות`;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x070b18);
+scene.fog = new THREE.FogExp2(0x070b18, 0.0028);
+const camera = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 0.1, 2000);
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.autoRotate = true; controls.autoRotateSpeed = 0.5;
+
+// stars
+{
+  const p=[]; for(let i=0;i<900;i++){const v=new THREE.Vector3().randomDirection().multiplyScalar(500+Math.random()*400); p.push(v.x,v.y,v.z);}
+  const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(p,3));
+  scene.add(new THREE.Points(g,new THREE.PointsMaterial({color:0x8899cc,size:1.2,fog:false,sizeAttenuation:false})));
+}
+
+// colors per community
+const comms = DATA.comms;
+const ccol = comms.map((_,i)=>new THREE.Color().setHSL(((i*137.508)%360)/360, 0.72, 0.62));
+
+// build graph structures
+const idx = new Map(DATA.nodes.map((n,i)=>[n.id,i]));
+const links = DATA.links.map(l=>[idx.get(l.s), idx.get(l.t), l]).filter(l=>l[0]!==undefined&&l[1]!==undefined);
+const adj = DATA.nodes.map(()=>[]);
+links.forEach(([a,b],i)=>{adj[a].push([b,i]); adj[b].push([a,i]);});
+const deg = adj.map(a=>a.length);
+
+// initial positions: community centers on a fibonacci sphere
+const R0 = 70;
+const centers = comms.map((_,i)=>{
+  const k=comms.length, y=1-2*(i+.5)/k, r=Math.sqrt(1-y*y), th=i*2.399963;
+  return new THREE.Vector3(Math.cos(th)*r, y, Math.sin(th)*r).multiplyScalar(R0);
+});
+const pos = DATA.nodes.map(n=>centers[n.c].clone().add(new THREE.Vector3().randomDirection().multiplyScalar(8+Math.random()*10)));
+const vel = pos.map(()=>new THREE.Vector3());
+
+// nodes
+const sphereGeo = new THREE.SphereGeometry(1, 20, 14);
+const meshes = DATA.nodes.map((n,i)=>{
+  const m = new THREE.Mesh(sphereGeo, new THREE.MeshBasicMaterial({color:ccol[n.c], transparent:true}));
+  m.userData.i = i; m.userData.base = 0.8 + Math.sqrt(deg[i])*0.55;
+  m.scale.setScalar(0.001); m.position.copy(pos[i]);
+  const halo = new THREE.Sprite(new THREE.SpriteMaterial({map:haloTex(), color:ccol[n.c], transparent:true, opacity:.55, depthWrite:false, blending:THREE.AdditiveBlending}));
+  halo.scale.setScalar(4); m.add(halo); m.userData.halo = halo;
+  scene.add(m); return m;
+});
+function haloTex(){
+  if(haloTex.t) return haloTex.t;
+  const c=document.createElement('canvas'); c.width=c.height=64; const x=c.getContext('2d');
+  const g=x.createRadialGradient(32,32,0,32,32,32); g.addColorStop(0,'rgba(255,255,255,1)'); g.addColorStop(.35,'rgba(255,255,255,.35)'); g.addColorStop(1,'rgba(255,255,255,0)');
+  x.fillStyle=g; x.fillRect(0,0,64,64); return haloTex.t=new THREE.CanvasTexture(c);
+}
+
+// edges
+const lp = new Float32Array(links.length*6), lc = new Float32Array(links.length*6);
+const lg = new THREE.BufferGeometry();
+lg.setAttribute('position', new THREE.BufferAttribute(lp,3));
+lg.setAttribute('color', new THREE.BufferAttribute(lc,3));
+const lines = new THREE.LineSegments(lg, new THREE.LineBasicMaterial({vertexColors:true, transparent:true, opacity:.9, depthWrite:false}));
+lines.frustumCulled = false; scene.add(lines);
+
+// pulses travelling along edges
+const NP = Math.min(160, links.length);
+const pulse = Array.from({length:NP},()=>({e:Math.floor(Math.random()*links.length), t:Math.random(), s:.15+Math.random()*.35}));
+const pp = new Float32Array(NP*3);
+const pg = new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.BufferAttribute(pp,3));
+const pts = new THREE.Points(pg, new THREE.PointsMaterial({map:haloTex(), color:0xffffff, size:3.2, transparent:true, depthWrite:false, blending:THREE.AdditiveBlending}));
+pts.frustumCulled=false; scene.add(pts);
+
+// labels
+function makeLabel(text){
+  const c=document.createElement('canvas'); c.width=512; c.height=64; const x=c.getContext('2d');
+  x.font='600 26px "Segoe UI",Arial'; x.textAlign='center'; x.textBaseline='middle'; x.direction='rtl';
+  const t = text.length>42 ? text.slice(0,40)+'…' : text;
+  x.lineWidth=6; x.strokeStyle='rgba(7,11,24,.95)'; x.strokeText(t,256,34); x.fillStyle='#fff'; x.fillText(t,256,34);
+  const tex=new THREE.CanvasTexture(c);
+  const s=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false}));
+  s.scale.set(22,2.75,1); s.renderOrder=5; return s;
+}
+const labels = new Map();
+function labelOf(i){ if(!labels.has(i)){const s=makeLabel(DATA.nodes[i].label); s.visible=false; scene.add(s); labels.set(i,s);} return labels.get(i); }
+const topDeg = [...deg.keys()].sort((a,b)=>deg[b]-deg[a]).slice(0,14);
+
+// state
+let selected=-1, hovered=-1, hiddenComm=new Set(), alpha=1, t0=performance.now(), introDone=false;
+const nodeOpacity = new Float32Array(N).fill(1), nodeOpTarget = new Float32Array(N).fill(1);
+const tmp = new THREE.Vector3(), tmp2 = new THREE.Vector3();
+
+function recomputeFocus(){
+  const nb = new Set();
+  if(selected>=0){ nb.add(selected); adj[selected].forEach(([j])=>nb.add(j)); }
+  for(let i=0;i<N;i++){
+    let o = 1;
+    if(hiddenComm.has(DATA.nodes[i].c)) o = 0.04;
+    else if(selected>=0 && !nb.has(i)) o = 0.12;
+    nodeOpTarget[i]=o;
+  }
+  focusSet = nb;
+}
+let focusSet = new Set();
+
+// physics
+function step(){
+  if(alpha < 0.004) return;
+  const K = 9;
+  for(let i=0;i<N;i++){
+    for(let j=i+1;j<N;j++){
+      tmp.subVectors(pos[i],pos[j]); let d2=tmp.lengthSq()+0.5;
+      if(d2>5000) continue;
+      const f = (K*K*1.6)/d2 * alpha; tmp.normalize().multiplyScalar(f);
+      vel[i].add(tmp); vel[j].sub(tmp);
+    }
+  }
+  for(const [a,b] of links){
+    tmp.subVectors(pos[b],pos[a]); const d=tmp.length()+1e-3;
+    const f=(d-10)*0.035*alpha; tmp.multiplyScalar(f/d);
+    vel[a].add(tmp); vel[b].sub(tmp);
+  }
+  for(let i=0;i<N;i++){
+    tmp.subVectors(centers[DATA.nodes[i].c],pos[i]).multiplyScalar(0.012*alpha); vel[i].add(tmp);
+    vel[i].addScaledVector(pos[i], -0.0008*alpha);
+    vel[i].multiplyScalar(0.82); pos[i].add(vel[i]);
+  }
+  alpha *= 0.9935;
+}
+
+function frame(now){
+  const el = (now-t0)/1000;
+  step();
+  // intro: nodes pop in by community order, camera flies in
+  for(let i=0;i<N;i++){
+    const m=meshes[i], n=DATA.nodes[i];
+    const delay = 0.15 + n.c*0.12 + (i%7)*0.03;
+    let k = Math.min(1, Math.max(0,(el-delay)/0.7)); k = 1-Math.pow(1-k,3);
+    nodeOpacity[i] += (nodeOpTarget[i]-nodeOpacity[i])*0.12;
+    const hl = (i===selected||i===hovered) ? 1.5 : 1;
+    const pulseS = 1 + 0.08*Math.sin(el*2 + i);
+    m.scale.setScalar(Math.max(0.001, m.userData.base*k*hl*pulseS));
+    m.position.copy(pos[i]);
+    m.material.opacity = nodeOpacity[i]; m.userData.halo.material.opacity = 0.55*nodeOpacity[i]*k;
+    m.userData.halo.scale.setScalar(m.userData.base*5.5*k*hl);
+    m.visible = nodeOpacity[i]>0.02;
+  }
+  // edges
+  for(let e=0;e<links.length;e++){
+    const [a,b]=links[e];
+    lp[e*6]=pos[a].x; lp[e*6+1]=pos[a].y; lp[e*6+2]=pos[a].z;
+    lp[e*6+3]=pos[b].x; lp[e*6+4]=pos[b].y; lp[e*6+5]=pos[b].z;
+    const ia=nodeOpacity[a], ib=nodeOpacity[b];
+    let bright = 0.22*Math.min(ia,ib);
+    if(selected>=0 && (a===selected||b===selected)) bright = 1;
+    const ca=ccol[DATA.nodes[a].c], cb=ccol[DATA.nodes[b].c];
+    const ramp = Math.min(1, el/2.2);
+    lc[e*6]=ca.r*bright*ramp; lc[e*6+1]=ca.g*bright*ramp; lc[e*6+2]=ca.b*bright*ramp;
+    lc[e*6+3]=cb.r*bright*ramp; lc[e*6+4]=cb.g*bright*ramp; lc[e*6+5]=cb.b*bright*ramp;
+  }
+  lg.attributes.position.needsUpdate=true; lg.attributes.color.needsUpdate=true;
+  // pulses
+  const dt = 1/60;
+  pulse.forEach((p,k)=>{
+    p.t += p.s*dt*1.6;
+    if(p.t>=1){ p.t=0; p.e = Math.floor(Math.random()*links.length); }
+    const [a,b]=links[p.e];
+    pp[k*3]=pos[a].x+(pos[b].x-pos[a].x)*p.t; pp[k*3+1]=pos[a].y+(pos[b].y-pos[a].y)*p.t; pp[k*3+2]=pos[a].z+(pos[b].z-pos[a].z)*p.t;
+  });
+  pg.attributes.position.needsUpdate=true;
+  pts.material.opacity = Math.min(1, el/2.5);
+  // labels
+  const want = new Set(topDeg);
+  if(hovered>=0) want.add(hovered);
+  if(selected>=0) focusSet.forEach(i=>want.add(i));
+  labels.forEach((s,i)=>{ if(!want.has(i)) s.visible=false; });
+  want.forEach(i=>{ if(nodeOpacity[i]<0.3) return; const s=labelOf(i); s.visible = el>2.2 || i===selected; s.position.copy(pos[i]).add(tmp2.set(0,meshes[i].userData.base*1.6+2.2,0)); });
+  // camera fly-in
+  if(!introDone){
+    const k = Math.min(1, el/3.2), e = 1-Math.pow(1-k,3);
+    const r = 560 - 220*e; const ang = (1-e)*1.6;
+    camera.position.set(Math.sin(ang)*r, 60+ (1-e)*160, Math.cos(ang)*r);
+    controls.target.set(0,0,0); camera.lookAt(0,0,0);
+    if(k>=1){ introDone=true; }
+  }
+  controls.update();
+  renderer.render(scene,camera);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+// interaction
+const ray=new THREE.Raycaster(), mouse=new THREE.Vector2();
+function pick(e){
+  mouse.set(e.clientX/innerWidth*2-1, -(e.clientY/innerHeight)*2+1);
+  ray.setFromCamera(mouse,camera);
+  const hit = ray.intersectObjects(meshes.filter(m=>m.visible),false)[0];
+  return hit ? hit.object.userData.i : -1;
+}
+renderer.domElement.addEventListener('pointermove', e=>{ const i=pick(e); if(i!==hovered){hovered=i; renderer.domElement.style.cursor=i>=0?'pointer':'default';} });
+let down=null;
+renderer.domElement.addEventListener('pointerdown', e=>down=[e.clientX,e.clientY]);
+renderer.domElement.addEventListener('pointerup', e=>{
+  if(!down||Math.hypot(e.clientX-down[0],e.clientY-down[1])>5) return;
+  select(pick(e));
+});
+const panel=document.getElementById('panel');
+function select(i){
+  selected=i; recomputeFocus();
+  if(i<0){ panel.style.display='none'; return; }
+  const n=DATA.nodes[i];
+  panel.querySelector('h2').textContent=n.label;
+  panel.querySelector('.tag').textContent=`${n.file||''}${n.loc?' · '+n.loc:''} · ${n.cn}`;
+  panel.querySelector('p').textContent=n.rat||'';
+  const ul=panel.querySelector('ul'); ul.innerHTML='';
+  adj[i].forEach(([j,e])=>{ const li=document.createElement('li'); li.textContent=`${links[e][2].rel} → ${DATA.nodes[j].label}`; li.onclick=()=>{select(j); flyTo(j);}; ul.appendChild(li); });
+  panel.style.display='block';
+  controls.autoRotate=false; document.getElementById('rot').textContent='סיבוב אוטומטי: כבוי';
+}
+function flyTo(i){
+  const target=pos[i].clone();
+  const from=camera.position.clone(), ft=controls.target.clone();
+  const dir=from.clone().sub(target).normalize(); const to=target.clone().add(dir.multiplyScalar(45));
+  const t0=performance.now();
+  (function anim(){ const k=Math.min(1,(performance.now()-t0)/900), e=1-Math.pow(1-k,3);
+    camera.position.lerpVectors(from,to,e); controls.target.lerpVectors(ft,target,e); if(k<1) requestAnimationFrame(anim); })();
+  introDone=true;
+}
+// legend
+const leg=document.getElementById('legend');
+const counts=comms.map((_,c)=>DATA.nodes.filter(n=>n.c===c).length);
+comms.forEach((name,c)=>{
+  const d=document.createElement('div');
+  d.innerHTML=`<i style="background:#${ccol[c].getHexString()}"></i>${name}<span class="n">${counts[c]}</span>`;
+  d.onclick=()=>{ if(hiddenComm.has(c)){hiddenComm.delete(c);d.classList.remove('off');} else {hiddenComm.add(c);d.classList.add('off');} recomputeFocus(); };
+  d.ondblclick=()=>{ hiddenComm=new Set(comms.map((_,k)=>k).filter(k=>k!==c)); [...leg.children].forEach((el,k)=>el.classList.toggle('off',k!==c)); recomputeFocus(); };
+  leg.appendChild(d);
+});
+// search
+document.getElementById('search').addEventListener('input', e=>{
+  const q=e.target.value.trim().toLowerCase(); if(!q){select(-1);return;}
+  const i=DATA.nodes.findIndex(n=>n.label.toLowerCase().includes(q)); if(i>=0){select(i); flyTo(i);}
+});
+document.getElementById('rot').onclick=e=>{controls.autoRotate=!controls.autoRotate; e.target.textContent='סיבוב אוטומטי: '+(controls.autoRotate?'פעיל':'כבוי');};
+document.getElementById('replay').onclick=()=>{ t0=performance.now(); introDone=false; alpha=1; select(-1);
+  hiddenComm.clear(); [...leg.children].forEach(el=>el.classList.remove('off')); recomputeFocus();
+  DATA.nodes.forEach((n,i)=>pos[i].copy(centers[n.c]).add(new THREE.Vector3().randomDirection().multiplyScalar(8+Math.random()*10))); vel.forEach(v=>v.set(0,0,0)); };
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+</script>
+</body>
+</html>
